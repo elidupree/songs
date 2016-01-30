@@ -47,4 +47,18 @@ notes.add (& scrawl_MIDI_notes (& ("instrument ".to_string () + & offset.to_stri
 for offset in 35.. 82 {
 notes.add (& scrawl_MIDI_notes (& (" percussion ".to_string () + & offset.to_string ())).translated ((180+ offset + (offset - 35)/4) as f64));
 } 
+
+  let music = notes.render_default(44100);
+
+  let spec = hound::WavSpec {
+    channels: 1,
+    sample_rate: 44100,
+    bits_per_sample: 16,
+  };
+  let mut writer = hound::WavWriter::create("palette.wav", spec).unwrap();
+  for t in music.samples.iter() {
+    writer.write_sample(*t as i16).unwrap();
+
+  }
+
 }
