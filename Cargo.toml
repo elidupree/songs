@@ -2,3 +2,7 @@
 name = "songs"
 version = "0.1.0"
 authors = ["Eli Dupree <vcs@elidupree.com>"]
+
+[dependencies]
+codecophony = {git = "https://github.com/elidupree/codecophony.git"}
+hound = "1.1.0"
