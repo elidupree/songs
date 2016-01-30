@@ -1,0 +1,4 @@
+[package]
+name = "songs"
+version = "0.1.0"
+authors = ["Eli Dupree <vcs@elidupree.com>"]
