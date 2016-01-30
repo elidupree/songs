@@ -5,6 +5,7 @@ use codecophony::*;
 
 fn main() {
 write_eggs ();
+write_palette ();
 }
 
 fn write_eggs () {
@@ -36,4 +37,14 @@ for offset in 0..16 {chorus_beat.add (& chorus_beat_part.translated (offset as f
     writer.write_sample(*t as i16).unwrap();
 
   }
+}
+
+fn write_palette () {
+let mut notes = Notes::new ();
+for offset in 1..129 {
+notes.add (& scrawl_MIDI_notes (& ("instrument ".to_string () + & offset.to_string () + & " 64".to_string ())).translated ((offset + (offset -1)/4) as f64));
+}
+for offset in 35.. 82 {
+notes.add (& scrawl_MIDI_notes (& (" percussion ".to_string () + & offset.to_string ())).translated ((180+ offset + (offset - 35)/4) as f64));
+} 
 }
