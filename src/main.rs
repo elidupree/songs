@@ -5,7 +5,7 @@ use codecophony::*;
 
 fn main() {
 write_eggs ();
-write_palette ();
+//write_palette ();
 }
 
 fn write_eggs () {
