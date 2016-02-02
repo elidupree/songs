@@ -17,7 +17,7 @@ fn write_eggs () {
           0 step 1 5 7 step 2 7 step 1 5 7 0 0 5 7 7 10 5 7 step 2 finish
 ");
 let chorus_harmony = scrawl_MIDI_notes ("transpose 45 instrument 31
-advance 2 0 and 4 and 7 and 12 advance 14 finish advance 2 4 and 12 and 19 advance 14 finish advance 2 0 and 4 and 7 and 12 advance 14 finish advance 2 2 and 7 and 17 and 22 advance 14 finish ");
+advance 2 0 and 4 and 7 and 12 at 18 0 and 4 and 7 and 12 at 26 4 and 12 and 19 at 34 0 and 4 and 7 and 12 at 50 0 and 4 and 7 and 12 at 58 2 and 7 and 17 and 22 at 64 finish ");
 let chorus_beat_part = scrawl_MIDI_notes ("velocity 100 percussion 35 step 2 35 and 38 finish");
 let mut chorus_beat = Notes::new ();
 for offset in 0..16 {chorus_beat.add (& chorus_beat_part.translated (offset as f64*4.0));}
