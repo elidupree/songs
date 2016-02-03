@@ -23,9 +23,34 @@ let chorus_beat_part = scrawl_MIDI_notes ("velocity 100 percussion 35 step 2 35 
 let mut chorus_beat = Notes::new ();
 for offset in 0..16 {chorus_beat.add (& chorus_beat_part.translated (offset as f64*4.0));}
 
-  let notes = Notes::combining(&[main_melody.clone (), chorus_harmony.clone (), chorus_beat.clone ()])
-                .scaled(30.0/170.0);
+let segment_length = 64.0;
 
+/*
+
+I wrote this verse with a boring rhythm (it should really have dotted notes and stuff) but I'm going to leave the customization for when I actually sing it.
+
+
+*/
+let mut believe_melody = scrawl_MIDI_notes ("transpose 57 velocity 100 instrument 55
+
+5 5 strong 7 2 2 0 2 2 5 7 strong 5 0 0 -2 0 advance 2
+transpose 53 advance 1 strong 7 2 2 2 0 2 2 strong 5 0 0 0 0 -2 0 advance 2
+transpose 57 -2 0 0 2 2 4 4 5 5 strong 7 0 0 -2 0 advance 3
+transpose 53 -2 0 0 2 2 4 4 5 5 strong 7 0 0 -2 0 advance 3");
+
+let standard_chorus_speed = 30.0/170.0;
+let standard_chorus_length = segment_length*standard_chorus_speed;
+
+  let standard_chorus = Notes::combining(&[main_melody.clone (), chorus_harmony.clone (), chorus_beat.clone ()])
+                .scaled(standard_chorus_speed);
+
+let mut now = 0.0;
+let opening_chorus_start = now;
+let mut notes = Notes::new ();
+notes.add (& standard_chorus.translated (opening_chorus_start));
+now += standard_chorus_length;
+let believe_start = now;
+notes.add (& believe_melody.translated (believe_start));
 
 
   let music = notes.render_default(44100);
