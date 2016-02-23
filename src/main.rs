@@ -27,7 +27,7 @@ let chorus_beat_part = scrawl_MIDI_notes ("velocity 100 percussion 35 step 2 35 
 let mut chorus_beat = Notes::new ();
 for offset in 0..16 {chorus_beat.add (& chorus_beat_part.translated (offset as f64*4.0));}
 let mut prechorus_beat = Notes::new ();
-for offset in 0..8 {prechorus_beat.add (& scrawl_MIDI_notes ("velocity 100 percussion 35 step 4 38 finish"));}
+for offset in 0..8 {prechorus_beat.add (& scrawl_MIDI_notes ("velocity 100 percussion 35 step 4 38 finish").translated (offset as f64*4.0));}
 
 let segment_length = 64.0;
 
@@ -61,7 +61,7 @@ let mut notes = Notes::new ();
 notes.add (& standard_chorus.translated (opening_chorus_start));
 now += standard_chorus_length;
 let believe_start = now;
-notes.add (& believe_melody.translated (believe_start).scaled (standard_verse_speed));
+notes.add (& believe_melody.translated (believe_start).scaled (standard_verse_speed).translated (now));
 now += standard_verse_length;
 notes.add (& standard_prechorus.translated (now));
 now += standard_prechorus_length;
