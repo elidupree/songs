@@ -19,7 +19,7 @@ fn write_eggs () {
 for note in main_melody.iter_mut () {if note.basics.start % 4.0 == 2.0 {note.renderer.velocity = 127;}}
 let chorus_harmony = scrawl_MIDI_notes ("transpose 45 instrument 31 velocity 40
 at 2 0 and 4 and 7 and 12
-at 18 5 and 9 and 12 and 17
+at 18 0 and 5 and 9 and 12 and 17
 at 34 0 and 4 and 7 and 12 
 at 50 2 and 7 and 17 and 22 
 at 64 finish ");
@@ -27,7 +27,7 @@ let chorus_beat_part = scrawl_MIDI_notes ("velocity 100 percussion 35 step 2 35 
 let mut chorus_beat = Notes::new ();
 for offset in 0..16 {chorus_beat.add (& chorus_beat_part.translated (offset as f64*4.0));}
 let mut prechorus_beat = Notes::new ();
-for offset in 0..8 {prechorus_beat.add (& scrawl_MIDI_notes ("velocity 100 percussion 35 step 4 38 finish").translated (offset as f64*4.0));}
+for offset in 0..8 {prechorus_beat.add (& scrawl_MIDI_notes ("velocity 100 percussion at 2 35 step 4 38 finish").translated (offset as f64*8.0));}
 
 let segment_length = 64.0;
 
@@ -61,7 +61,7 @@ let mut notes = Notes::new ();
 notes.add (& standard_chorus.translated (opening_chorus_start));
 now += standard_chorus_length;
 let believe_start = now;
-notes.add (& believe_melody.translated (believe_start).scaled (standard_verse_speed).translated (now));
+notes.add (& believe_melody.scaled (standard_verse_speed).translated (now));
 now += standard_verse_length;
 notes.add (& standard_prechorus.translated (now));
 now += standard_prechorus_length;
