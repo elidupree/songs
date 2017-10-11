@@ -8,6 +8,55 @@ write_eggs ();
 //write_palette ();
 }
 
+/*
+
+Eating eggs gives you cancer, eating bacon makes you die
+you'll get diabetes if you eat a single slice of pie
+I'm concerned for your health, you're not eating very well,
+if you have just one more sandwich then you might go straight to hell
+
+
+
+
+
+
+Just trust me, I'm a doctor and you need to change your weight
+if your BMI is less than 95 or more than 8
+if you take my instructions dieting will be a breeze
+don't eat carbs and don't eat fats and don't eat any calories
+eating eggs, etc.
+
+It's clear your excess weight has caused you ills of every kind
+it's why you fell and broke your arm – it's why you're colorblind
+
+
+
+You must be, very careful of the things that you consume
+Anything that has cholesterol will surely spell your doom
+only trust ingredients from recipes used by your mom
+if your food is full of chemicals it's probably a bomb
+eating eggs, etc.
+
+If they let you eat what feels good they are hopelessly naïve
+I'm telling you the rules and I'm the one you should believe
+you must only eat just enough to make you stay alive
+there's totally no need for you to heal or grow or thrive
+
+If you eat a chicken dinner then you'll have a heart attack
+you'll get morbidly obese if you indulge a midnight snack
+and, all the effort you put into following the way
+will be wasted if you eat more than 10 calories a day
+eating eggs, etc.
+
+[Chorus repeats; voiceover:]
+
+
+
+Eating eggs, etc.
+so don't take any of that bad diet advice
+
+*/
+
 fn write_eggs () {
   let mut main_melody = scrawl_MIDI_notes(
                             "transpose 57 velocity 100 instrument 55
