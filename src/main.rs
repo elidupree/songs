@@ -17,22 +17,56 @@ const CHANNELS: usize = 2;
 type Output = f32;
 
 fn play() {
-  let mut position = 0;
-  let note = codecophony::SineWave {
+  
+  /*let note = codecophony::SineWave {
     start:0.0, duration:1.0,
     frequency: 265.0, amplitude: 0.25,
-  };
+  };*/
+  
+  let mut notes: Vec<_> = (0..100u32).map(|index| codecophony::SineWave {
+    start: index as f64 * 0.3, duration:1.0,
+    frequency: 220.0, amplitude: 0.1,
+  }).collect();
   
   
+  codecophony::interval_optimizer::optimize_notes (&mut notes,
+    codecophony::interval_optimizer::OptimizeNotesParameters {max_change_ratio: 2.0, .. Default::default()},
+    |(_note, frequency), neighbors| {
+      let mut result = 0.0;
+      for &(_, neighbor_frequency) in neighbors.iter() {
+        let interval = codecophony::interval_optimizer::closest_reference_interval (frequency/neighbor_frequency);
+        let error = ((interval.frequency()/frequency)-1.0).powi(2);
+        let limit_score = if interval.odd_limit == 1 {
+          if ((frequency/neighbor_frequency)-1.0).abs() < 0.5 {
+            // unison bad!
+            -13.0
+          }
+          else {
+            // octave ok
+            -5.0
+          }
+        }
+        else {
+          //(interval.odd_limit as f64).ln()
+          -interval.odd_limit as f64
+        };
+        result += limit_score - error;
+      }
+      result
+    }
+  );
+  
+  
+  let mut position = 0;
 
   // The callback we'll use to pass to the Stream. It will request audio from our dsp_graph.
-  let callback = move |portaudio::OutputStreamCallbackArgs { buffer, time, .. }| {
+  let callback = move |portaudio::OutputStreamCallbackArgs { buffer, .. }| {
     let buffer: &mut [[Output; CHANNELS]] = buffer.to_frame_slice_mut().unwrap();
     dsp::slice::equilibrium(buffer);
-    note.render (buffer, position, SAMPLE_HZ);
+    Renderable::<[Output; CHANNELS]>::render(&notes.iter(), buffer, position, SAMPLE_HZ);
     
     position += buffer.len() as i32;
-    if position > (SAMPLE_HZ*1.5) as i32 {position = 0;}
+    if position > (SAMPLE_HZ*(notes.iter().end()+0.5)) as i32 {position = 0;}
 
         //if timer >= 0.0 {
             portaudio::Continue
