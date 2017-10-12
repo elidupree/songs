@@ -6,3 +6,11 @@ authors = ["Eli Dupree <vcs@elidupree.com>"]
 [dependencies]
 codecophony = {git = "https://github.com/elidupree/codecophony.git"}
 hound = "1.1.0"
+portaudio = "0.7.0"
+dsp-chain = "0.13.1"
+
+[patch."https://github.com/elidupree/codecophony.git"]
+codecophony = {path="/n/codecophony-share-build/codecophony"}
+
+[profile.dev]
+opt-level = 3

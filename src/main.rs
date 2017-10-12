@@ -1,11 +1,58 @@
 extern crate codecophony;
 extern crate hound;
+extern crate portaudio;
+extern crate dsp;
 
 use codecophony::*;
+use dsp::sample::ToFrameSliceMut;
 
 fn main() {
-write_eggs ();
+//write_eggs ();
 //write_palette ();
+  play();
+}
+
+const SAMPLE_HZ: f64 = 44100.0;
+const CHANNELS: usize = 2;
+type Output = f32;
+
+fn play() {
+  let mut position = 0;
+  let note = codecophony::SineWave {
+    start:0.0, duration:1.0,
+    frequency: 265.0, amplitude: 0.25,
+  };
+  
+  
+
+  // The callback we'll use to pass to the Stream. It will request audio from our dsp_graph.
+  let callback = move |portaudio::OutputStreamCallbackArgs { buffer, time, .. }| {
+    let buffer: &mut [[Output; CHANNELS]] = buffer.to_frame_slice_mut().unwrap();
+    dsp::slice::equilibrium(buffer);
+    note.render (buffer, position, SAMPLE_HZ);
+    
+    position += buffer.len() as i32;
+    if position > (SAMPLE_HZ*1.5) as i32 {position = 0;}
+
+        //if timer >= 0.0 {
+            portaudio::Continue
+        //} else {
+            //portaudio::Complete
+        //}
+    };
+
+    let pa = portaudio::PortAudio::new().unwrap();
+    let settings = pa.default_output_stream_settings::<Output>(
+        CHANNELS as i32,
+        SAMPLE_HZ,
+        4096, // frames per buffer
+    ).unwrap();
+    let mut stream = pa.open_non_blocking_stream(settings, callback).unwrap();
+    stream.start().unwrap();
+
+    while let Ok(true) = stream.is_active() {
+        ::std::thread::sleep(::std::time::Duration::from_millis(16));
+    }
 }
 
 /*
@@ -57,6 +104,7 @@ so don't take any of that bad diet advice
 
 */
 
+/*
 fn write_eggs () {
   let mut main_melody = scrawl_MIDI_notes(
                             "transpose 57 velocity 100 instrument 55
@@ -152,4 +200,4 @@ notes.add (& scrawl_MIDI_notes (& (" percussion ".to_string () + & offset.to_str
 
   }
 
-}
+}*/
