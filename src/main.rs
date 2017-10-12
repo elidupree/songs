@@ -5,6 +5,7 @@ extern crate dsp;
 
 use codecophony::*;
 use dsp::sample::ToFrameSliceMut;
+use dsp::Frame;
 
 fn main() {
 //write_eggs ();
@@ -58,15 +59,16 @@ fn play() {
   
   
   let mut position = 0;
+  let pa_notes = notes.clone();
 
   // The callback we'll use to pass to the Stream. It will request audio from our dsp_graph.
   let callback = move |portaudio::OutputStreamCallbackArgs { buffer, .. }| {
     let buffer: &mut [[Output; CHANNELS]] = buffer.to_frame_slice_mut().unwrap();
     dsp::slice::equilibrium(buffer);
-    Renderable::<[Output; CHANNELS]>::render(&notes.iter(), buffer, position, SAMPLE_HZ);
+    Renderable::<[Output; CHANNELS]>::render(&pa_notes.iter(), buffer, position, SAMPLE_HZ);
     
     position += buffer.len() as i32;
-    if position > (SAMPLE_HZ*(notes.iter().end()+0.5)) as i32 {position = 0;}
+    if position > (SAMPLE_HZ*(pa_notes.iter().end()+0.5)) as i32 {position = 0;}
 
         //if timer >= 0.0 {
             portaudio::Continue
@@ -83,6 +85,25 @@ fn play() {
     ).unwrap();
     let mut stream = pa.open_non_blocking_stream(settings, callback).unwrap();
     stream.start().unwrap();
+    
+    let spec = hound::WavSpec {
+      channels: CHANNELS as u16,
+      sample_rate: SAMPLE_HZ as u32,
+      bits_per_sample: 16,
+      sample_format: hound::SampleFormat::Int,
+    };
+    let data = PositionedSequence::<[i16;CHANNELS],Vec<[i16;CHANNELS]>>::rendered_from(notes.iter(), SAMPLE_HZ);
+    let mut writer = hound::WavWriter::create("interval_optimized.wav", spec).unwrap();
+    {
+    let mut writer = writer.get_i16_writer(data.frames.len() as u32*CHANNELS as u32);
+    for frame in data.frames.iter() {
+      for sample in frame.channels() {
+        writer.write_sample(sample);
+      }
+    }
+    writer.flush().unwrap();
+    }
+    writer.finalize().unwrap();
 
     while let Ok(true) = stream.is_active() {
         ::std::thread::sleep(::std::time::Duration::from_millis(16));
