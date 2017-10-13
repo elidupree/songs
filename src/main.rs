@@ -113,6 +113,13 @@ fn play() {
 
 /*
 
+
+[Incomplete lyrics for a song I was writing.
+
+CONTENT WARNING: diet culture stuff]
+
+
+
 Eating eggs gives you cancer, eating bacon makes you die
 you'll get diabetes if you eat a single slice of pie
 I'm concerned for your health, you're not eating very well,
