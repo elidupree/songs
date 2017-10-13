@@ -2,10 +2,12 @@ extern crate codecophony;
 extern crate hound;
 extern crate portaudio;
 extern crate dsp;
+extern crate rand;
 
 use codecophony::*;
 use dsp::sample::ToFrameSliceMut;
 use dsp::Frame;
+use rand::{Rng, SeedableRng};
 
 fn main() {
 //write_eggs ();
@@ -24,7 +26,7 @@ fn play() {
     frequency: 265.0, amplitude: 0.25,
   };*/
   
-  let mut notes: Vec<_> = (0..100u32).map(|index| codecophony::SineWave {
+  /*let mut notes: Vec<_> = (0..100u32).map(|index| codecophony::SineWave {
     start: index as f64 * 0.3, duration:1.0,
     frequency: 220.0, amplitude: 0.1,
   }).collect();
@@ -57,7 +59,53 @@ fn play() {
     }
   );
   
-  for note in notes.iter_mut() {note.amplitude *= 220.0/note.frequency;}
+  for note in notes.iter_mut() {note.amplitude *= 220.0/note.frequency;}*/
+  
+  /*let notes: Vec<_> = (0..100u32).map(|index|
+    MIDIPitchedNote::new(index as f64 * 0.3, 1.0, 1+index as i32, 90, 3)
+  ).collect();
+  
+  let notes: Vec<_> = (0..1000u32).map(|index|
+    MIDIPercussionNote::new((index as f64 + 1.0).ln(), 1.0, 90, 35)
+  ).collect();*/
+  
+  let beats: f64 = 4.0;
+  use std::iter;
+  let beat_weights: Vec<f64> =
+    iter::repeat(0.0).take(8)
+    .chain(iter::repeat(2.0).take(4))
+    .chain(iter::repeat(1.0).take(2))
+    .chain(iter::repeat(3.0).take(2))
+    .chain(iter::repeat(0.5).take(1))
+    .chain(iter::repeat(1.5).take(1))
+    .chain(iter::repeat(2.5).take(1))
+    .chain(iter::repeat(3.5).take(1))
+    .collect();
+  let step_weights: Vec<(f64, f64)> =
+    iter::repeat((1.0,0.0)).take(1)
+    .chain(iter::repeat((2.0,0.0)).take(1))
+    .chain(iter::repeat((2.0,1.0)).take(1))
+    .chain(iter::repeat((4.0,0.0)).take(1))
+    .chain(iter::repeat((4.0,1.0)).take(1))
+    .chain(iter::repeat((4.0,2.0)).take(1))
+    .chain(iter::repeat((4.0,3.0)).take(1))
+    .collect();
+  
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
+  
+  let mut notes = Vec::new();
+  for instrument in 35..71 {
+    let &beat = generator.choose (& beat_weights).unwrap();
+    let &(step, phase) = generator.choose (& step_weights).unwrap();
+    let mut time = beat+beats*phase;
+    while time < 60.0 {
+      notes.push (
+        MIDIPercussionNote::new(time/4.0, 1.0, 50, instrument)
+      );
+      time += step*beats;
+    }
+  }
+
   
   let mut position = 0;
   let pa_notes = notes.clone();
@@ -134,9 +182,7 @@ Just trust me, I'm a doctor and you need to change your weight
 if your BMI is less than 95 or more than 8
 if you take my instructions dieting will be a breeze
 don't eat carbs and don't eat fats and don't eat any calories
-eating eggs, etc.
-
-It's clear your excess weight has caused you ills of every kind
+eating eggs, etc. It's clear your excess weight has caused you ills of every kind
 it's why you fell and broke your arm – it's why you're colorblind
 
 
