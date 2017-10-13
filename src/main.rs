@@ -57,6 +57,7 @@ fn play() {
     }
   );
   
+  for note in notes.iter_mut() {note.amplitude *= 220.0/note.frequency;}
   
   let mut position = 0;
   let pa_notes = notes.clone();
