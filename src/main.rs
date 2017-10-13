@@ -94,7 +94,8 @@ fn play() {
   let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
   
   let mut notes = Vec::new();
-  for instrument in 35..71 {
+  for instrument in 35..82 {
+    if instrument == 58 || instrument == 71 || instrument == 72 || instrument == 78 || instrument == 79 {continue;}
     let &beat = generator.choose (& beat_weights).unwrap();
     let &(step, phase) = generator.choose (& step_weights).unwrap();
     let mut time = beat+beats*phase;
