@@ -5,14 +5,16 @@ extern crate dsp;
 extern crate rand;
 
 use codecophony::*;
+use codecophony::phrase::Phrase;
 use rand::{Rng, SeedableRng};
+use std::iter::FromIterator;
 
 
 pub const SAMPLE_HZ: f64 = 44100.0;
 pub const CHANNELS: usize = 2;
 pub type Output = f32;
 
-pub fn current_playground() -> Box<Renderable<[Output; CHANNELS]> + Send> {
+pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
   
   /*let note = codecophony::SineWave {
     start:0.0, duration:1.0,
@@ -99,6 +101,7 @@ pub fn current_playground() -> Box<Renderable<[Output; CHANNELS]> + Send> {
       time += step*beats;
     }
   }
-
-  Box::new(notes)
+  
+  let phrases = vec![Phrase::from_iter (notes.iter())];
+  (Box::new(notes), phrases)
 }

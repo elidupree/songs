@@ -16,7 +16,7 @@ fn main() {
 //write_palette ();
   loop {::std::thread::sleep(::std::time::Duration::from_millis(16));}
   
-  let notes = sandbox::current_playground();
+  let (notes,_) = sandbox::current_playground();
   
   let spec = hound::WavSpec {
       channels: CHANNELS as u16,

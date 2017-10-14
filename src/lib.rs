@@ -17,11 +17,6 @@ use rand::{Rng, SeedableRng};
 use std::str::FromStr;
 use std::sync::Mutex;
 
-#[derive (Serialize)]
-struct Hack {
-  value: String,
-}
-
 mod sandbox;
 
 use sandbox::{SAMPLE_HZ, CHANNELS, Output};
@@ -39,16 +34,21 @@ pub fn set_playback_range (json_string: String) {
 
 pub fn poll_rendered ()->String {
   let mut guard = GUI.lock().unwrap();
+  let mut new_phrases = None;
   if guard.is_none() {
     let gui = codecophony::rendering_gui::RenderingGui::new(SAMPLE_HZ);
-    let notes = sandbox::current_playground();
+    let (notes, phrases) = sandbox::current_playground();
+    new_phrases = Some (phrases);
     gui.set_playback_range (((SAMPLE_HZ*notes.start()) as FrameTime, (SAMPLE_HZ*notes.end()) as FrameTime + 1));
     gui.set_playback_data (Some(notes));
     *guard = Some(gui);
+    
   }
-  /*if let Some(whatever) = guard.as_ref() {
-    whatever.set_playback_range (serde_json::from_str (& json_string).unwrap());
-  }*/
+  let gui = guard.as_ref().unwrap();
+  let mut updates = gui.gui_updates();
+  if let Some(phrases) = new_phrases {
+    updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrases (phrases)) ;
+  }
   
-  serde_json::to_string (& Hack {value: String::from_str ("hello from `songs`").unwrap()}).unwrap()
+  serde_json::to_string (& updates).unwrap()
 }
