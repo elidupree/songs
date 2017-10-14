@@ -5,159 +5,35 @@ extern crate dsp;
 extern crate rand;
 
 use codecophony::*;
-use dsp::sample::ToFrameSliceMut;
 use dsp::Frame;
-use rand::{Rng, SeedableRng};
+
+mod sandbox;
+
+use sandbox::{SAMPLE_HZ, CHANNELS, Output};
 
 fn main() {
 //write_eggs ();
 //write_palette ();
-  play();
-}
-
-const SAMPLE_HZ: f64 = 44100.0;
-const CHANNELS: usize = 2;
-type Output = f32;
-
-fn play() {
+  loop {::std::thread::sleep(::std::time::Duration::from_millis(16));}
   
-  /*let note = codecophony::SineWave {
-    start:0.0, duration:1.0,
-    frequency: 265.0, amplitude: 0.25,
-  };*/
+  let notes = sandbox::current_playground();
   
-  /*let mut notes: Vec<_> = (0..100u32).map(|index| codecophony::SineWave {
-    start: index as f64 * 0.3, duration:1.0,
-    frequency: 220.0, amplitude: 0.1,
-  }).collect();
-  
-  
-  codecophony::interval_optimizer::optimize_notes (&mut notes,
-    codecophony::interval_optimizer::OptimizeNotesParameters {max_change_ratio: 2.0, .. Default::default()},
-    |(_note, frequency), neighbors| {
-      let mut result = 0.0;
-      for &(_, neighbor_frequency) in neighbors.iter() {
-        let interval = codecophony::interval_optimizer::closest_reference_interval (frequency/neighbor_frequency);
-        let error = ((interval.frequency()/frequency)-1.0).powi(2);
-        let limit_score = if interval.odd_limit == 1 {
-          if ((frequency/neighbor_frequency)-1.0).abs() < 0.5 {
-            // unison bad!
-            -13.0
-          }
-          else {
-            // octave ok
-            -5.0
-          }
-        }
-        else {
-          //(interval.odd_limit as f64).ln()
-          -interval.odd_limit as f64
-        };
-        result += limit_score - error;
-      }
-      result
-    }
-  );
-  
-  for note in notes.iter_mut() {note.amplitude *= 220.0/note.frequency;}*/
-  
-  /*let notes: Vec<_> = (0..100u32).map(|index|
-    MIDIPitchedNote::new(index as f64 * 0.3, 1.0, 1+index as i32, 90, 3)
-  ).collect();
-  
-  let notes: Vec<_> = (0..1000u32).map(|index|
-    MIDIPercussionNote::new((index as f64 + 1.0).ln(), 1.0, 90, 35)
-  ).collect();*/
-  
-  let beats: f64 = 4.0;
-  use std::iter;
-  let beat_weights: Vec<f64> =
-    iter::repeat(0.0).take(8)
-    .chain(iter::repeat(2.0).take(4))
-    .chain(iter::repeat(1.0).take(2))
-    .chain(iter::repeat(3.0).take(2))
-    .chain(iter::repeat(0.5).take(1))
-    .chain(iter::repeat(1.5).take(1))
-    .chain(iter::repeat(2.5).take(1))
-    .chain(iter::repeat(3.5).take(1))
-    .collect();
-  let step_weights: Vec<(f64, f64)> =
-    iter::repeat((1.0,0.0)).take(1)
-    .chain(iter::repeat((2.0,0.0)).take(1))
-    .chain(iter::repeat((2.0,1.0)).take(1))
-    .chain(iter::repeat((4.0,0.0)).take(1))
-    .chain(iter::repeat((4.0,1.0)).take(1))
-    .chain(iter::repeat((4.0,2.0)).take(1))
-    .chain(iter::repeat((4.0,3.0)).take(1))
-    .collect();
-  
-  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
-  
-  let mut notes = Vec::new();
-  for instrument in 35..82 {
-    if instrument == 58 || instrument == 71 || instrument == 72 || instrument == 78 || instrument == 79 {continue;}
-    let &beat = generator.choose (& beat_weights).unwrap();
-    let &(step, phase) = generator.choose (& step_weights).unwrap();
-    let mut time = beat+beats*phase;
-    while time < 60.0 {
-      notes.push (
-        MIDIPercussionNote::new(time/4.0, 1.0, 50, instrument)
-      );
-      time += step*beats;
-    }
-  }
-
-  
-  let mut position = 0;
-  let pa_notes = notes.clone();
-
-  // The callback we'll use to pass to the Stream. It will request audio from our dsp_graph.
-  let callback = move |portaudio::OutputStreamCallbackArgs { buffer, .. }| {
-    let buffer: &mut [[Output; CHANNELS]] = buffer.to_frame_slice_mut().unwrap();
-    dsp::slice::equilibrium(buffer);
-    Renderable::<[Output; CHANNELS]>::render(&pa_notes.iter(), buffer, position, SAMPLE_HZ);
-    
-    position += buffer.len() as i32;
-    if position > (SAMPLE_HZ*(pa_notes.iter().end()+0.5)) as i32 {position = 0;}
-
-        //if timer >= 0.0 {
-            portaudio::Continue
-        //} else {
-            //portaudio::Complete
-        //}
-    };
-
-    let pa = portaudio::PortAudio::new().unwrap();
-    let settings = pa.default_output_stream_settings::<Output>(
-        CHANNELS as i32,
-        SAMPLE_HZ,
-        4096, // frames per buffer
-    ).unwrap();
-    let mut stream = pa.open_non_blocking_stream(settings, callback).unwrap();
-    stream.start().unwrap();
-    
-    let spec = hound::WavSpec {
+  let spec = hound::WavSpec {
       channels: CHANNELS as u16,
       sample_rate: SAMPLE_HZ as u32,
       bits_per_sample: 16,
       sample_format: hound::SampleFormat::Int,
     };
-    let data = PositionedSequence::<[i16;CHANNELS],Vec<[i16;CHANNELS]>>::rendered_from(notes.iter(), SAMPLE_HZ);
+    let data = PositionedSequence::<[Output;CHANNELS],Vec<[Output;CHANNELS]>>::rendered_from(&*notes, SAMPLE_HZ);
     let mut writer = hound::WavWriter::create("interval_optimized.wav", spec).unwrap();
     {
-    let mut writer = writer.get_i16_writer(data.frames.len() as u32*CHANNELS as u32);
     for frame in data.frames.iter() {
       for sample in frame.channels() {
         writer.write_sample(sample);
       }
     }
-    writer.flush().unwrap();
     }
     writer.finalize().unwrap();
-
-    while let Ok(true) = stream.is_active() {
-        ::std::thread::sleep(::std::time::Duration::from_millis(16));
-    }
 }
 
 /*

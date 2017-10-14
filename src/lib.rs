@@ -7,22 +7,48 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+#[macro_use]
+extern crate lazy_static;
 
 use codecophony::*;
 use dsp::sample::ToFrameSliceMut;
 use dsp::Frame;
 use rand::{Rng, SeedableRng};
 use std::str::FromStr;
+use std::sync::Mutex;
 
 #[derive (Serialize)]
 struct Hack {
   value: String,
 }
 
+mod sandbox;
+
+use sandbox::{SAMPLE_HZ, CHANNELS, Output};
+
+lazy_static! {
+  static ref GUI: Mutex<Option<codecophony::rendering_gui::RenderingGui>> = Mutex::new(None);
+}
+
 pub fn set_playback_range (json_string: String) {
-  
+  let guard = GUI.lock().unwrap();
+  if let Some(gui) = guard.as_ref() {
+    gui.set_playback_range (serde_json::from_str (& json_string).unwrap());
+  }
 }
 
 pub fn poll_rendered ()->String {
+  let mut guard = GUI.lock().unwrap();
+  if guard.is_none() {
+    let gui = codecophony::rendering_gui::RenderingGui::new(SAMPLE_HZ);
+    let notes = sandbox::current_playground();
+    gui.set_playback_range (((SAMPLE_HZ*notes.start()) as FrameTime, (SAMPLE_HZ*notes.end()) as FrameTime + 1));
+    gui.set_playback_data (Some(notes));
+    *guard = Some(gui);
+  }
+  /*if let Some(whatever) = guard.as_ref() {
+    whatever.set_playback_range (serde_json::from_str (& json_string).unwrap());
+  }*/
+  
   serde_json::to_string (& Hack {value: String::from_str ("hello from `songs`").unwrap()}).unwrap()
 }
