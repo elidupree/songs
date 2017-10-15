@@ -8,11 +8,18 @@ use codecophony::*;
 use codecophony::phrase::Phrase;
 use rand::{Rng, SeedableRng};
 use std::iter::FromIterator;
+use std::collections::HashMap;
 
 
 pub const SAMPLE_HZ: f64 = 44100.0;
 pub const CHANNELS: usize = 2;
 pub type Output = f32;
+
+pub fn current_input_playground (input: & HashMap <String, Phrase>) -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
+  let notes = input.iter().next().unwrap().1.to_midi_pitched (| note | (90, 1));
+  let phrases = vec![Phrase::from_iter (notes.iter())];
+  (Box::new(notes), phrases)
+}
 
 pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
   
@@ -105,3 +112,5 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   let phrases = vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
 }
+
+
