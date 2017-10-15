@@ -25,14 +25,18 @@ lazy_static! {
   static ref GUI: Mutex<Option<codecophony::rendering_gui::RenderingGui>> = Mutex::new(None);
 }
 
-pub fn set_playback_range (json_string: String) {
-  let guard = GUI.lock().unwrap();
-  if let Some(gui) = guard.as_ref() {
-    gui.set_playback_range (serde_json::from_str (& json_string).unwrap());
+pub fn push_gui_input (json_string: String) {
+  let mut guard = GUI.lock().unwrap();
+  let input = serde_json::from_str (& json_string).unwrap();
+  if let Some(gui) = guard.as_mut() {
+    gui.apply_gui_input (&input);
+  }
+  match input {
+    _=>(),
   }
 }
 
-pub fn poll_rendered ()->String {
+pub fn poll_updates ()->String {
   let mut guard = GUI.lock().unwrap();
   let mut new_phrases = None;
   if guard.is_none() {
