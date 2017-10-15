@@ -12,6 +12,7 @@ extern crate lazy_static;
 
 use codecophony::*;
 use codecophony::phrase::Phrase;
+use codecophony::rendering_gui::GuiPhrase;
 use dsp::sample::ToFrameSliceMut;
 use dsp::Frame;
 use rand::{Rng, SeedableRng};
@@ -50,6 +51,7 @@ pub fn push_gui_input (json_string: String) {
 
 pub fn poll_updates ()->String {
   let mut guard = GUI.lock().unwrap();
+  let generate_editable = guard.is_none();
   if guard.is_none() {
     let gui = codecophony::rendering_gui::RenderingGui::new(SAMPLE_HZ);
     let mut editable_phrases = HashMap::new();
@@ -64,20 +66,28 @@ pub fn poll_updates ()->String {
     let (notes, phrases) = sandbox::current_input_playground(& globals.editable_phrases);
     globals.gui.set_playback_data (Some(notes));
     
-    updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrases (
-      globals.editable_phrases.iter().map (| (index, phrase) | codecophony::rendering_gui::GuiPhrase {
-        data: phrase.clone(),
-        timed_with_playback: false,
-        editing_id: Some (index.clone()),
-      })
-      
-      .chain (phrases.into_iter().map(|phrase| codecophony::rendering_gui::GuiPhrase {
-        data: phrase,
-        timed_with_playback: true,
-        editing_id: None,
-      }))
-      
-      .collect())) ;
+    if generate_editable {
+      updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrase (
+        String::from_str ("first_test").unwrap(),
+        GuiPhrase{
+          data: Phrase {notes: Vec::new()},
+          timed_with_playback: false,
+          editable: true,
+        }
+      ));
+    }
+    
+    for (index, phrase) in phrases.into_iter().enumerate() {
+      updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrase (
+        format!("rendered {:?}", index),
+        GuiPhrase{
+          data: phrase,
+          timed_with_playback: true,
+          editable: false,
+        }
+      ));
+    }
+
     globals.needs_update = false;
   }
   
