@@ -16,7 +16,10 @@ pub const CHANNELS: usize = 2;
 pub type Output = f32;
 
 pub fn current_input_playground (input: & HashMap <String, Phrase>) -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
-  let notes = input.iter().next().unwrap().1.to_midi_pitched (| note | (90, 1));
+  let notes = input.iter().next().unwrap().1.to_midi_pitched (| note | {
+    let instrument = if note.tags.contains ("melody") {61} else {43};
+    (90, instrument)
+  });
   let phrases = vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
 }
