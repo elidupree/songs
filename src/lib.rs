@@ -55,10 +55,12 @@ pub fn poll_updates ()->String {
   if guard.is_none() {
     let gui = codecophony::rendering_gui::RenderingGui::new(SAMPLE_HZ);
     let mut editable_phrases = HashMap::new();
-    
+        
     editable_phrases.insert (String::from_str ("first_test").unwrap(), Phrase {notes: Vec::new()});
+    editable_phrases.insert (String::from_str ("arising").unwrap(), Phrase {notes: Vec::new()});
+    editable_phrases.insert (String::from_str ("striking").unwrap(), Phrase {notes: Vec::new()});
     
-    *guard = Some(Globals {gui, editable_phrases, needs_update: true});
+    *guard = Some(Globals {gui, editable_phrases: editable_phrases, needs_update: true});
   }
   let globals = guard.as_mut().unwrap();
   let mut updates = globals.gui.gui_updates();
@@ -69,6 +71,22 @@ pub fn poll_updates ()->String {
     if generate_editable {
       updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrase (
         String::from_str ("first_test").unwrap(),
+        GuiPhrase{
+          data: Phrase {notes: Vec::new()},
+          timed_with_playback: false,
+          editable: true,
+        }
+      ));
+      updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrase (
+        String::from_str ("arising").unwrap(),
+        GuiPhrase{
+          data: Phrase {notes: Vec::new()},
+          timed_with_playback: false,
+          editable: true,
+        }
+      ));
+      updates.push (codecophony::rendering_gui::GuiUpdate::ReplacePhrase (
+        String::from_str ("striking").unwrap(),
         GuiPhrase{
           data: Phrase {notes: Vec::new()},
           timed_with_playback: false,

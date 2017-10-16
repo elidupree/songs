@@ -16,10 +16,48 @@ pub const CHANNELS: usize = 2;
 pub type Output = f32;
 
 pub fn current_input_playground (input: & HashMap <String, Phrase>) -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
-  let notes = input.iter().next().unwrap().1.to_midi_pitched (| note | {
+  /*let notes = input.get("first_test").unwrap().to_midi_pitched (| note | {
     let instrument = if note.tags.contains ("melody") {61} else {43};
     (90, instrument)
-  });
+  });*/
+  
+  let mut notes = Vec::new();
+  
+  let mut arising: Vec<_> = input.get("arising").unwrap().notes.iter().map(| note | {
+    let instrument = if note.tags.contains ("melody") {57} else {43};
+    let velocity = if note.tags.contains ("first") {90} else {60};
+    let mut duration = note.end - note.start;
+    if note.tags.contains ("melody") {duration *= 0.8;};
+    (note, MIDIPitchedNote::new (note.start, duration, frequency_to_nearest_midi_pitch (note.frequency), velocity, instrument))
+  }).collect();
+  for note in arising.iter_mut() {
+    note.1.dilate(3.0/4.0, 0.0);
+  }
+  let striking: Vec<_> = input.get("striking").unwrap().to_midi_pitched (| note | {
+    let instrument = if note.tags.contains ("melody") {57} else {43};
+    let velocity = if note.tags.contains ("emphasis") {120} else if note.tags.contains ("emphasis") {60} else {90};
+    (velocity, instrument)
+  }).into_iter().map(|mut note| {
+    note.nudge(12.0/4.0);
+    note
+  }).collect();
+  notes.extend(arising.iter().map(|n| n.1.clone()));
+  notes.extend(striking.iter().cloned());
+  notes.extend(arising.iter().map(|n| n.1.clone()).map(|mut note| {
+    note.nudge(29.0/4.0);
+    note
+  }));
+  notes.extend(arising.iter().cloned().filter_map(|mut note| {
+    if note.0.tags.contains ("bass") {
+      note.1.nudge(29.0/4.0);
+      note.1.transpose(7);
+      Some(note.1)
+    } else {None}
+  }));
+  notes.extend(striking.iter().cloned().map(|mut note| {
+    note.nudge(29.0/4.0);
+    note
+  }));
   let phrases = vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
 }
