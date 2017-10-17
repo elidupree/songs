@@ -283,12 +283,12 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
       for level2 in level..melody_levels {
         frequency *= melody_patterns [level2][(time as usize >> level2) & 3];
       }
-      while frequency < 100.0*(level+1) as f64/(2.0) { frequency *= 2.0; }
-      while frequency > 100.0*(level+1) as f64*(2.0) { frequency /= 2.0; }
+      while frequency < 100.0*(3-level) as f64/(2.0) { frequency *= 2.0; }
+      while frequency > 100.0*(3-level) as f64*(2.0) { frequency /= 2.0; }
       let mut amplitude = 0.1*220.0/frequency;
       if amplitude > 0.25 { amplitude = 0.25; } 
       notes.push (
-        Box::new(codecophony::SineWave { start: time as f64, duration: 1.0, frequency, amplitude})
+        Box::new(codecophony::SineWave { start: time as f64, duration: 1.05, frequency, amplitude})
       );
     }
   }
