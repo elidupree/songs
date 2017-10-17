@@ -197,7 +197,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
     
     'whoops: for time in 0u32..(1<<(2*levels)) {
       for level in 0..levels {
-        if my_patterns [level].iter().find (|a| **a==(time >> level) & 3).is_none() {
+        if my_patterns [level].iter().find (|a| **a==(time >> (2*level)) & 3).is_none() {
           continue 'whoops;
         }
       }
