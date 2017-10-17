@@ -15,6 +15,53 @@ pub const SAMPLE_HZ: f64 = 44100.0;
 pub const CHANNELS: usize = 2;
 pub type Output = f32;
 
+
+/*
+const PATH: &str = "../data_02";
+pub fn current_watcher() {
+  let mut percussion_table = HashMap::new();
+  percussion_table.insert(30,40);
+  codecophony::watch_phrases (PATH, |phrases, _changed| {
+    
+    let mut arising = phrases ["arising"].notes.clone();
+    for note in arising.iter_mut() {
+      if note.tags.contains ("melody") {
+        note.dilate(0.8, note.start);
+        if !note.tags.contains ("first") {
+          note.tags.insert ("weakened");
+        }
+      }
+    }
+    
+    let striking = phases ["striking"].notes.clone();
+    let first = [
+      &arising.clone().mapped_tag ("next_phrase", Vec::new()),
+      &striking.clone().nudged (arising.find_tag ("next_phrase").start)
+    ].concat();
+    let second = first.clone().nudged (first.find_tag ("next_phrase").start);
+    
+    let first_second = [& first, & second].concat();
+    
+    let mut notes = Vec::new();
+    for note in first_second {
+      let velocity = if note.tags.contains ("emphasis") {120} else if note.tags.contains ("weakened") {60} else {90};
+      if note.tags.contains ("percussion") {
+        let pitch = frequency_to_nearest_midi_pitch(note.frequency);
+        let instrument = percussion_table.get(pitch).cloned().unwrap_or(35);
+        note.push(Box::new(MIDIPercussionNote::new (note.start, note.end - note.start, velocity, instrument)));
+      }
+      else {
+        let instrument = if note.tags.contains ("melody") {57} else {43};
+        note.push(Box::new(MIDIPitchedNote::new (note.start, note.end - note.start, frequency_to_nearest_midi_pitch (note.frequency), velocity, instrument)));
+      }
+    }
+    
+    codecophony::write_phrase (PATH, Phrase {notes: first_second.clone()});
+    codecophony::set_playback_data (notes);
+  });
+}
+*/
+
 pub fn current_input_playground (input: & HashMap <String, Phrase>) -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
   /*let notes = input.get("first_test").unwrap().to_midi_pitched (| note | {
     let instrument = if note.tags.contains ("melody") {61} else {43};
