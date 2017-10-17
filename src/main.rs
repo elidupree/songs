@@ -14,7 +14,7 @@ use sandbox::{SAMPLE_HZ, CHANNELS, Output};
 fn main() {
 //write_eggs ();
 //write_palette ();
-  loop {::std::thread::sleep(::std::time::Duration::from_millis(16));}
+  //loop {::std::thread::sleep(::std::time::Duration::from_millis(16));}
   
   let (notes,_) = sandbox::current_playground();
   
@@ -29,7 +29,7 @@ fn main() {
     {
     for frame in data.frames.iter() {
       for sample in frame.channels() {
-        writer.write_sample(sample);
+        writer.write_sample((sample*2f32.powi(15)) as i16).unwrap();
       }
     }
     }

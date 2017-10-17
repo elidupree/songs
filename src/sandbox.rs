@@ -112,7 +112,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
     MIDIPercussionNote::new((index as f64 + 1.0).ln(), 1.0, 90, 35)
   ).collect();*/
   
-  let beats: f64 = 4.0;
+  /*let beats: f64 = 4.0;
   use std::iter;
   let beat_weights: Vec<f64> =
     iter::repeat(0.0).take(8)
@@ -138,7 +138,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   
   let mut notes = Vec::new();
   for instrument in 35..82 {
-    if instrument == 58 || instrument == 71 || instrument == 72 || instrument == 78 || instrument == 79 {continue;}
+    if instrument == 58 || instrument == 71 || instrument == 72 || instrument == 78 || instrument == 79 {continue;} and
     let &beat = generator.choose (& beat_weights).unwrap();
     let &(step, phase) = generator.choose (& step_weights).unwrap();
     let mut time = beat+beats*phase;
@@ -148,7 +148,65 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
       );
       time += step*beats;
     }
+  }*/
+  
+  /*
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
+  let mut freq = 220.0;
+  let timeadvance = 0.2;
+  let harmonics = vec![
+    3.0,5.0,7.0//,9.0,11.0,13.0
+  ];
+  let mut notes: Vec<_> = (0..1000u32).map(|index| {
+    let factor = generator.choose(&harmonics).unwrap();
+    if generator.gen() {
+      freq *= factor;
+    }
+    else {
+      freq /= factor;
+    }
+    while freq < 220.0/(1.0f64 + generator.gen::<f64>() * 5.0f64) { freq *= 2.0; }
+    while freq > 220.0*(1.0f64 + generator.gen::<f64>() * 5.0f64) { freq /= 2.0; }
+    let mut amplitude = timeadvance*0.2*220.0/freq;
+    if amplitude > timeadvance*0.5 { amplitude = timeadvance*0.5; } 
+    codecophony::SineWave {
+      start: index as f64 * timeadvance, duration:1.0,
+      frequency: freq, amplitude,
+    }
+  }).collect();*/
+  
+  
+  
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
+  let levels = 5;
+  let patterns = vec![
+    vec![0,2],
+    vec![1,3],
+    vec![0,1,2,3],
+    vec![0,1],
+    vec![2,3],
+    vec![2],
+  ];
+  
+  let mut notes = Vec::new();
+  for instrument in 35..82 {
+    if instrument == 58 || instrument == 71 || instrument == 72 || instrument == 78 || instrument == 79 {continue;}
+    
+    let mut my_patterns = Vec::new();
+    for _ in 0..levels {my_patterns.push (generator.choose (& patterns).unwrap());}
+    
+    'whoops: for time in 0u32..(1<<(2*levels)) {
+      for level in 0..levels {
+        if my_patterns [level].iter().find (|a| **a==(time >> level) & 3).is_none() {
+          continue 'whoops;
+        }
+      }
+      notes.push (
+        MIDIPercussionNote::new(time as f64/4.0, 1.0, 50, instrument)
+      );
+    }
   }
+  
   
   let phrases = vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
