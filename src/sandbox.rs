@@ -188,7 +188,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
     vec![2],
   ];
   
-  let mut notes = Vec::new();
+  let mut notes: Vec<Box<Renderable<[Output; CHANNELS]> + Send>> = Vec::new();
   for instrument in 35..82 {
     if instrument == 58 || instrument == 71 || instrument == 72 || instrument == 78 || instrument == 79 {continue;}
     
@@ -202,13 +202,53 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
         }
       }
       notes.push (
-        MIDIPercussionNote::new(time as f64/4.0, 1.0, 50, instrument)
+        Box::new(MIDIPercussionNote::new(time as f64/4.0, 1.0, 50, instrument))
       );
     }
   }
   
+  let mut melody_patterns = Vec::new();
+  let harmonics = vec![
+    3.0,5.0,7.0,
+    1.0/3.0, 1.0/5.0, 1.0/7.0,
+  ];
   
-  let phrases = vec![Phrase::from_iter (notes.iter())];
+  let melody_levels = levels - 1;
+  for _ in 0..melody_levels {melody_patterns.push ([
+    *generator.choose (& harmonics).unwrap(),
+    *generator.choose (& harmonics).unwrap(),
+    *generator.choose (& harmonics).unwrap(),
+    1.0,
+  ]);}
+  for time in 0u32..(1<<(2*melody_levels)) {
+    for level in 0..melody_levels {
+      if (time as usize >> level) & 3 == 0 {
+        melody_patterns [level] = [
+          *generator.choose (& harmonics).unwrap(),
+          *generator.choose (& harmonics).unwrap(),
+          *generator.choose (& harmonics).unwrap(),
+          1.0,
+        ];
+      }
+    }
+    for level in 0..3 {
+      let mut frequency = 220.0;
+      for level2 in level..melody_levels {
+        frequency *= melody_patterns [level2][(time as usize >> level2) & 3];
+      }
+      while frequency < 100.0*(level+1) as f64/(2.0) { frequency *= 2.0; }
+      while frequency > 100.0*(level+1) as f64*(2.0) { frequency /= 2.0; }
+      let mut amplitude = 0.1*220.0/frequency;
+      if amplitude > 0.25 { amplitude = 0.25; } 
+      notes.push (
+        Box::new(codecophony::SineWave { start: time as f64, duration: 1.0, frequency, amplitude})
+      );
+    }
+  }
+
+  
+  
+  let phrases = vec![];// vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
 }
 
