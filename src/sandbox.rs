@@ -5,62 +5,79 @@ extern crate dsp;
 extern crate rand;
 
 use codecophony::*;
-use codecophony::phrase::Phrase;
+use codecophony::phrase::{Phrase, PhraseNote};
 use rand::{Rng, SeedableRng};
 use std::iter::FromIterator;
 use std::collections::HashMap;
+use std::path::Path;
+use std::str::FromStr;
 
 
 pub const SAMPLE_HZ: f64 = 44100.0;
 pub const CHANNELS: usize = 2;
 pub type Output = f32;
 
+fn applied<F: FnMut(&mut PhraseNote)> (mut collection: Vec<PhraseNote>, mut callback: F) -> Vec<PhraseNote> {
+  for note in collection.iter_mut() {callback (note);}
+  collection
+}
 
-/*
-const PATH: &str = "../data_02";
+fn find_tag (collection: &Vec<PhraseNote>, item: & str)->PhraseNote {
+  // I don't want to have fallback cases all over the place, but
+  // make a meaningless default so that we don't crash
+  collection.iter().find (| whatever | whatever.tags.contains (item)).cloned().unwrap_or (PhraseNote::new (0.0, 0.0, 100.0))
+}
+
+fn concat (mut first: Vec<PhraseNote>, second: Vec<PhraseNote>)-> Vec<PhraseNote> {
+  first.extend (second.into_iter());
+  first
+}
+
 pub fn current_watcher() {
   let mut percussion_table = HashMap::new();
+  let project_path = Path::new("../data_02");
   percussion_table.insert(30,40);
-  codecophony::watch_phrases (PATH, |phrases, _changed| {
+  codecophony::project::watch_phrases (&project_path, &mut |phrases, _changed| {
     
     let mut arising = phrases ["arising"].notes.clone();
     for note in arising.iter_mut() {
       if note.tags.contains ("melody") {
-        note.dilate(0.8, note.start);
+        let start = note.start;
+        note.dilate(0.8, start);
         if !note.tags.contains ("first") {
-          note.tags.insert ("weakened");
+          note.tags.insert (String::from_str ("weakened").unwrap());
         }
       }
     }
     
-    let striking = phases ["striking"].notes.clone();
-    let first = [
-      &arising.clone().mapped_tag ("next_phrase", Vec::new()),
-      &striking.clone().nudged (arising.find_tag ("next_phrase").start)
-    ].concat();
-    let second = first.clone().nudged (first.find_tag ("next_phrase").start);
+    let striking = phrases ["striking"].notes.clone();
+    let first = concat (
+      applied (arising.clone(), | note | {note.tags.remove ("next_phrase");}),
+      applied (striking.clone(), |note| note.nudge (find_tag (&arising, "next_phrase").start))
+    );
+    let second = applied (first.clone(), |note| note.nudge (find_tag (&first, "next_phrase").start));
     
-    let first_second = [& first, & second].concat();
+    let first_second = concat(first.clone(), second.clone());
     
-    let mut notes = Vec::new();
-    for note in first_second {
+    let mut notes: Vec<Box<Renderable<[Output; CHANNELS]> + Send>> = Vec::new();
+    for note in first_second.iter() {
       let velocity = if note.tags.contains ("emphasis") {120} else if note.tags.contains ("weakened") {60} else {90};
       if note.tags.contains ("percussion") {
         let pitch = frequency_to_nearest_midi_pitch(note.frequency);
-        let instrument = percussion_table.get(pitch).cloned().unwrap_or(35);
-        note.push(Box::new(MIDIPercussionNote::new (note.start, note.end - note.start, velocity, instrument)));
+        let instrument = percussion_table.get(&pitch).cloned().unwrap_or(35);
+        notes.push(Box::new(MIDIPercussionNote::new (note.start, note.end - note.start, velocity, instrument)));
       }
       else {
         let instrument = if note.tags.contains ("melody") {57} else {43};
-        note.push(Box::new(MIDIPitchedNote::new (note.start, note.end - note.start, frequency_to_nearest_midi_pitch (note.frequency), velocity, instrument)));
+        notes.push(Box::new(MIDIPitchedNote::new (note.start, note.end - note.start, frequency_to_nearest_midi_pitch (note.frequency), velocity, instrument)));
       }
     }
     
-    codecophony::write_phrase (PATH, Phrase {notes: first_second.clone()});
-    codecophony::set_playback_data (notes);
+    codecophony::project::write_phrase (&project_path, "output", &Phrase {notes: first_second.clone()});
+    codecophony::project::set_playback_data (&project_path, SAMPLE_HZ, Some(Box::new(notes)));
   });
 }
-*/
+
 
 pub fn current_input_playground (input: & HashMap <String, Phrase>) -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<Phrase>) {
   /*let notes = input.get("first_test").unwrap().to_midi_pitched (| note | {
