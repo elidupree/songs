@@ -342,7 +342,7 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
       pattern_type: PatternType::Assemblage (vec![create_random_pattern (duration, 2.0*duplicates, generator), create_random_pattern (duration, 2.0*duplicates, generator)]),
     }
   }
-  else if duration*4.0 > generator.gen() {
+  else if duration > 1.0 || (duration.log2() > -0.1 - generator.gen_range(0,4) as f64) {
     // long patterns must be constructed from sub-patterns
     if generator.gen() || duplicates <= 1.0 {
       //repeating pattern
