@@ -335,7 +335,7 @@ enum PatternType {
 }
 
 fn create_random_pattern (duration: f64, duplicates: i32, generator: &mut ChaChaRng)->Pattern {
-  if generator.gen_range(0, 3) == 0 {
+  if duplicates < 32 && generator.gen_range(0, 3) == 0 {
     Pattern {
       duration,
       offset: 0.0,
@@ -364,7 +364,7 @@ fn create_random_pattern (duration: f64, duplicates: i32, generator: &mut ChaCha
   }
   else {
     // short patterns are uhhh
-    if generator.gen_range(0, 3) != 0 {
+    if generator.gen_range(0, 2) != 0 {
       let instrument = generator.gen_range(35, 83);
       Pattern {
         duration,
