@@ -342,7 +342,7 @@ fn create_random_pattern (duration: f64, duplicates: i32, generator: &mut ChaCha
       pattern_type: PatternType::Assemblage (vec![create_random_pattern (duration, 2*duplicates, generator), create_random_pattern (duration, 2*duplicates, generator)]),
     }
   }
-  else if duration > generator.gen() {
+  else if duration*4.0 > generator.gen() {
     // long patterns must be constructed from sub-patterns
     if generator.gen() || duplicates == 1 {
       //repeating pattern
@@ -369,7 +369,7 @@ fn create_random_pattern (duration: f64, duplicates: i32, generator: &mut ChaCha
       Pattern {
         duration,
         offset: 0.0,
-        pattern_type: PatternType::Notes (Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64/4.0, 1.0, 120/duplicates, instrument))])),
+        pattern_type: PatternType::Notes (Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64, 1.0, 120/duplicates, instrument))])),
       }
     }
     else {
