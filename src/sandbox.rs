@@ -356,15 +356,21 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
       }
     }
     else {
-      // offset pattern
-      let mut child = create_random_pattern (duration/2.0, if duplicates > 1.5 {duplicates / 1.5} else {1.0}, generator);
-      if generator.gen() { child.offset += duration/2.0; }
-      child
+      // differing pattern
+      let child = create_random_pattern (duration/2.0, duplicates, generator);
+      let mut second_child = create_random_pattern (duration/2.0, duplicates, generator);
+      second_child.offset += duration/2.0;
+      Pattern {
+        duration,
+        offset: 0.0,
+        pattern_type: PatternType::Assemblage (vec![child, second_child]),
+      }
     }
   }
   else {
     // short patterns are uhhh
-    if generator.gen_range(0, 2) != 0 {
+    match generator.gen_range(0, 3) {
+    0 => {
       let instrument = generator.gen_range(35, 83);
       Pattern {
         duration,
@@ -372,7 +378,7 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
         pattern_type: PatternType::Notes (Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64, 1.0, (100.0/(duplicates as f64).sqrt()) as i32, instrument))])),
       }
     }
-    else {
+    1 => {
       let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
       let mut amplitude = 0.2*220.0/frequency/(duplicates as f64).sqrt();
       if amplitude > 0.5/(duplicates as f64).sqrt() { amplitude = 0.5/(duplicates as f64).sqrt(); } 
@@ -381,6 +387,14 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
         offset: 0.0,
         pattern_type: PatternType::Notes (Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])),
       }
+    }
+    _ => {
+      Pattern {
+        duration,
+        offset: 0.0,
+        pattern_type: PatternType::Notes (Rc::new(move |time| vec![])),
+      }
+    }
     }
   }
 }
