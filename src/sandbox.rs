@@ -344,7 +344,7 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
   }
   else if duration > 1.0 || (duration.log2() > -0.1 - generator.gen_range(0,4) as f64) {
     // long patterns must be constructed from sub-patterns
-    if generator.gen() || duplicates <= 1.0 {
+    if duplicates <= 1.0 || generator.gen_range(0, 4) != 0 { if generator.gen_range(0, 3) != 0 {
       //repeating pattern
       let child = create_random_pattern (duration/2.0, duplicates, generator);
       let mut second_child = child.clone();
@@ -356,7 +356,7 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
       }
     }
     else {
-      // differing pattern
+      // differing patterns
       let child = create_random_pattern (duration/2.0, duplicates, generator);
       let mut second_child = create_random_pattern (duration/2.0, duplicates, generator);
       second_child.offset += duration/2.0;
@@ -365,6 +365,12 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
         offset: 0.0,
         pattern_type: PatternType::Assemblage (vec![child, second_child]),
       }
+    } }
+    else {
+      // offset pattern
+      let mut child = create_random_pattern (duration/2.0, if duplicates > 1.5 {duplicates / 1.5} else {1.0}, generator);
+      if generator.gen() { child.offset += duration/2.0; }
+      child
     }
   }
   else {
