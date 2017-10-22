@@ -6,11 +6,12 @@ extern crate rand;
 
 use codecophony::*;
 use codecophony::phrase::{Phrase, PhraseNote};
-use rand::{Rng, SeedableRng};
+use rand::{Rng, SeedableRng, ChaChaRng};
 use std::iter::FromIterator;
 use std::collections::HashMap;
 use std::path::Path;
 use std::str::FromStr;
+use std::rc::Rc;
 
 
 pub const SAMPLE_HZ: f64 = 44100.0;
@@ -241,7 +242,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   
   
   
-  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
+  /*let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
   let levels = 5;
   let patterns = vec![
     vec![0,2],
@@ -308,12 +309,95 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
         Box::new(codecophony::SineWave { start: time as f64, duration: 1.05, frequency, amplitude})
       );
     }
-  }
-
+  }*/
+  
+  
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
+  let notes = assemble_pattern (create_random_pattern ((1u32<<7) as f64, 1, &mut generator), 0.0);
   
   
   let phrases = vec![];// vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
+}
+
+
+#[derive (Clone)]
+struct Pattern {
+  duration: f64,
+  offset: f64,
+  pattern_type: PatternType,
+}
+
+#[derive (Clone)]
+enum PatternType {
+  Assemblage (Vec<Pattern>),
+  Notes (Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>>),
+}
+
+fn create_random_pattern (duration: f64, duplicates: i32, generator: &mut ChaChaRng)->Pattern {
+  if generator.gen_range(0, 3) == 0 {
+    Pattern {
+      duration,
+      offset: 0.0,
+      pattern_type: PatternType::Assemblage (vec![create_random_pattern (duration, 2*duplicates, generator), create_random_pattern (duration, 2*duplicates, generator)]),
+    }
+  }
+  else if duration > generator.gen() {
+    // long patterns must be constructed from sub-patterns
+    if generator.gen() || duplicates == 1 {
+      //repeating pattern
+      let child = create_random_pattern (duration/2.0, duplicates, generator);
+      let mut second_child = child.clone();
+      second_child.offset += duration/2.0;
+      Pattern {
+        duration,
+        offset: 0.0,
+        pattern_type: PatternType::Assemblage (vec![child, second_child]),
+      }
+    }
+    else {
+      // offset pattern
+      let mut child = create_random_pattern (duration/2.0, (duplicates+1)/2, generator);
+      if generator.gen() { child.offset += duration/2.0; }
+      child
+    }
+  }
+  else {
+    // short patterns are uhhh
+    if generator.gen_range(0, 3) != 0 {
+      let instrument = generator.gen_range(35, 83);
+      Pattern {
+        duration,
+        offset: 0.0,
+        pattern_type: PatternType::Notes (Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64/4.0, 1.0, 120/duplicates, instrument))])),
+      }
+    }
+    else {
+      let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
+      let mut amplitude = 0.3*220.0/frequency/(duplicates as f64);
+      if amplitude > 1.0/(duplicates as f64) { amplitude = 1.0/(duplicates as f64); } 
+      Pattern {
+        duration,
+        offset: 0.0,
+        pattern_type: PatternType::Notes (Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])),
+      }
+    }
+  }
+}
+
+fn assemble_pattern (pattern: Pattern, offset: f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>> {
+  let mut result = Vec::new();
+  match pattern.pattern_type {
+    PatternType::Assemblage (patterns) => {
+      for other_pattern in patterns {
+        result.extend (assemble_pattern (other_pattern, offset + pattern.offset));
+      }
+    },
+    PatternType::Notes (notes) => {
+      return notes(offset + pattern.offset);
+    }
+  }
+  result
 }
 
 
