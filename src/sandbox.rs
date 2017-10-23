@@ -420,4 +420,56 @@ fn assemble_pattern (pattern: Pattern, offset: f64)->Vec<Box<Renderable<[Output;
   result
 }
 
+/*
+
+
+#[derive (Clone)]
+struct ForwardPattern {
+  duration: f64,
+  offset: f64,
+  max_voices: i32,
+  pattern_type: PatternType,
+}
+
+struct ForwardPatternModificationParameters {
+
+}
+
+trait ForwardPatternType {
+  fn modified (&self, parameters: ForwardPatternModificationParameters)->Self;
+  fn new_random (generator: &mut ChaChaRng)->Self;
+  fn max_voices (&self)->i32,
+}
+
+fn new_random_forward_pattern_type (generator: &mut ChaChaRng)-> {
+  
+}
+
+fn expand_forward_pattern (pattern: ForwardPattern, generator: &mut ChaChaRng) -> ForwardPattern {
+  let pattern_type = ModifiedRepeat::new (pattern, generator);
+  ForwardPattern {
+    duration: pattern.duration*2.0,
+    offset: pattern.offset,
+    max_voices: max (pattern.pattern_type, pattern_type),
+    pattern_type,
+  }
+}
+
+fn generate_forward_pattern (generator: &mut ChaChaRng, min_duration: f64) -> ForwardPattern {
+  let mut pattern = generate_smallest_forward_pattern (generator);
+  while pattern.duration < min_duration {
+    pattern = expand_forward_pattern (pattern);
+  }
+  pattern
+}
+
+#[derive (Clone)]
+enum PatternType {
+  Assemblage (Vec<Pattern>),
+  Notes (Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>>),
+}
+
+fn
+
+*/
 
