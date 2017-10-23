@@ -451,7 +451,12 @@ fn new_random_forward_pattern_type (generator: &mut ChaChaRng)-> {
 
 fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & ForwardPatternModificationParameters, generator: &mut ChaChaRng) {
   for collection in pattern.children.iter_mut() {
-    collection.retain (|_| generator.gen_range(0,3)!=0i32);
+    for child in collection.iter_mut() {
+      if generator.gen_range(0,3)!=0i32 {
+        modify_forward_pattern (child, ancestor_parameters, generator);
+      }
+    }
+    //collection.retain (|_| generator.gen_range(0,4)!=0i32);
     for _ in 0..3 {
       if (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < 2.0 + pattern.duration.log2() {
         collection.push (generate_forward_pattern (generator, pattern.duration/2.0));
@@ -462,6 +467,9 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
     let modified_children_index = generator.gen_range (0, 2);
     let reference_children_index = (modified_children_index + 1) & 1;
   }*/
+  if generator.gen_range(0,3)==0i32 { 
+    reroll_note (pattern, generator); 
+  }
   
   update_max_voices (pattern);
 }
