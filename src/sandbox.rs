@@ -470,25 +470,30 @@ fn update_max_voices (pattern: &mut ForwardPattern) {
   pattern.max_voices = pattern.children.iter().map (| collection | collection.iter().map (| child | child.max_voices).sum::<i32>()).max ().unwrap() + (pattern.notes)(1.0).len() as i32;
 }
 
+fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
+  pattern.notes = pattern_silence_note();
+  
+  if pattern.duration <= 1.1 && generator.gen::<f64>()*2.0 < pattern.duration { 
+    pattern.notes = random_pattern_note (pattern.duration, 0.2, generator);
+  }
+}
+
 fn expand_forward_pattern (pattern: ForwardPattern, generator: &mut ChaChaRng) -> ForwardPattern {
   //let pattern_type = ModifiedRepeat::new (pattern, generator);
   let mut next = pattern.clone();
   modify_forward_pattern (&mut next, & ForwardPatternModificationParameters{}, generator);
   
   let duration = pattern.duration*2.0;
-  let mut notes = pattern_silence_note();
-  if duration <= 1.1 && generator.gen::<f64>()*2.0 < duration { 
-    notes = random_pattern_note (pattern.duration*2.0, 0.2, generator);
-  }
   
   let mut result = ForwardPattern {
     duration,
     max_voices: 0,
     //pattern_type,
     children: [vec![pattern], vec![next]],
-    notes,
+    notes: pattern_silence_note(),
   };
-  update_max_voices (&mut result) ;
+  reroll_note(&mut result, generator);
+  update_max_voices (&mut result);
   result
 }
 fn generate_smallest_forward_pattern (generator: &mut ChaChaRng) -> ForwardPattern {
