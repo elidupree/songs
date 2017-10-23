@@ -332,10 +332,13 @@ fn random_pattern_note (duration: f64, volume: f64, generator: &mut ChaChaRng)->
       Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64, 1.0, (100.0*volume) as i32, instrument))])
     },
     1 => {
-      let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
+      /*let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
       let mut amplitude = 0.2*volume*220.0/frequency;
       if amplitude > 0.5*volume { amplitude = 0.5*volume.sqrt(); } 
-      Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])
+      Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])*/
+      let instrument = generator.gen_range(1, 120);
+      let pitch = generator.gen_range(33, 81);
+      Rc::new(move |time| vec![Box::new(MIDIPitchedNote::new(time as f64, duration, pitch, (100.0*volume) as i32, instrument))])
     },
     _ => {
       pattern_silence_note()
