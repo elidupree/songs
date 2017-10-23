@@ -324,11 +324,12 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
 fn pattern_silence_note()->Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>> {
   Rc::new(move |time| vec![])
 }
-
+use std::cmp::max;
 fn random_pattern_note (duration: f64, volume: f64, generator: &mut ChaChaRng)->Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>> {
   match generator.gen_range(0, 3) {
     0 => {
-      let instrument = generator.gen_range(35, 83);
+      let mut instrument = generator.gen_range(35, 83);
+      while instrument == 71 || instrument == 72 { instrument = generator.gen_range(35, 83); }
       Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64, 1.0, (100.0*volume) as i32, instrument))])
     },
     1 => {
@@ -338,7 +339,8 @@ fn random_pattern_note (duration: f64, volume: f64, generator: &mut ChaChaRng)->
       Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])*/
       let instrument = generator.gen_range(1, 120);
       let pitch = generator.gen_range(33, 81);
-      Rc::new(move |time| vec![Box::new(MIDIPitchedNote::new(time as f64, duration, pitch, (100.0*volume) as i32, instrument))])
+      let velocity_penalty = max (0, pitch - 60);
+      Rc::new(move |time| vec![Box::new(MIDIPitchedNote::new(time as f64, duration, pitch, (100.0*volume) as i32 - velocity_penalty, instrument))])
     },
     _ => {
       pattern_silence_note()
@@ -456,7 +458,7 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
         modify_forward_pattern (child, ancestor_parameters, generator);
       }
     }
-    //collection.retain (|_| generator.gen_range(0,4)!=0i32);
+    collection.retain (|_| generator.gen_range(0,16)!=0i32);
     for _ in 0..3 {
       if (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < 2.0 + pattern.duration.log2() {
         collection.push (generate_forward_pattern (generator, pattern.duration/2.0));
@@ -467,7 +469,7 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
     let modified_children_index = generator.gen_range (0, 2);
     let reference_children_index = (modified_children_index + 1) & 1;
   }*/
-  if generator.gen_range(0,3)==0i32 { 
+  if generator.gen_range(0,8)==0i32 { 
     reroll_note (pattern, generator); 
   }
   
@@ -482,6 +484,9 @@ fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
   pattern.notes = pattern_silence_note();
   
   if pattern.duration <= 1.1 && generator.gen::<f64>()*2.0 < pattern.duration { 
+    pattern.notes = random_pattern_note (pattern.duration, 0.6, generator);
+  }
+  if pattern.duration >= 1.1 && generator.gen::<f64>()*2.0 < 1.0/pattern.duration { 
     pattern.notes = random_pattern_note (pattern.duration, 0.6, generator);
   }
 }
