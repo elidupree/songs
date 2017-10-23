@@ -450,7 +450,7 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
   for collection in pattern.children.iter_mut() {
     collection.retain (|_| generator.gen());
     for _ in 0..3 {
-      if (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < pattern.duration.log2() {
+      if (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < 2.0 + pattern.duration.log2() {
         collection.push (generate_forward_pattern (generator, pattern.duration/2.0));
       }
     }
