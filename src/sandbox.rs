@@ -474,7 +474,7 @@ fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
   pattern.notes = pattern_silence_note();
   
   if pattern.duration <= 1.1 && generator.gen::<f64>()*2.0 < pattern.duration { 
-    pattern.notes = random_pattern_note (pattern.duration, 0.2, generator);
+    pattern.notes = random_pattern_note (pattern.duration, 0.6, generator);
   }
 }
 
