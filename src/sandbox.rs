@@ -312,8 +312,8 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   }*/
   
   
-  let mut generator = rand::chacha::ChaChaRng::from_seed(&[35]);
-  let notes = assemble_pattern (create_random_pattern ((1u32<<7) as f64, 1.0, &mut generator), 0.0);
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[38]);
+  //let notes = assemble_pattern (create_random_pattern ((1u32<<7) as f64, 1.0, &mut generator), 0.0);
   let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, (1u32<<7) as f64), 0.0);
   
   
@@ -487,7 +487,7 @@ fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
     pattern.notes = random_pattern_note (pattern.duration, 0.6, generator);
   }
   if pattern.duration >= 1.1 && generator.gen::<f64>()*2.0 < 1.0/pattern.duration { 
-    pattern.notes = random_pattern_note (pattern.duration, 0.6, generator);
+    pattern.notes = random_pattern_note (pattern.duration, 0.6 / pattern.duration.log2(), generator);
   }
 }
 
