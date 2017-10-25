@@ -538,3 +538,51 @@ fn assemble_forward_pattern (pattern: & ForwardPattern, offset: f64)->Vec<Box<Re
   result
 }
 
+
+/*
+struct FamiliarityPattern {
+  plays: Cell <usize>,
+  level: u32,
+  max_voices: i32,
+  children: Vec<Vec<Rc<FamiliarityPattern>>>,
+  original: Option <Rc<FamiliarityPattern>>,
+  similarity_to_original: f64,
+  notes: Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>>,
+}
+
+struct FamiliarityMusic {
+  existing_patterns_by_level: Vec<Vec<Rc<FamiliarityPattern>>>,
+  components: Vec<Rc<FamiliarityPattern>>,
+}
+
+impl FamiliarityPattern {
+  fn virtual_plays (&self)->f64 {
+    (self.plays.get()+1) as f64 + self.original.map_or (0.0, |original| self.similarity_to_original*original.virtual_plays())
+  }
+  fn my_level_novelty (&self)->f64 {
+    1.0/self.virtual_plays() 
+  }
+  fn total_novelty (&self)->f64 {
+    self.my_level_novelty () + self.children.iter().flat_map (| children | children.iter()).map (| child | child.total_novelty ()).sum()
+  }
+  fn component_novelty (&self, path: &[usize])->f64 {
+    let my_score = self.my_level_novelty ();
+    match path.first() {
+      None => self.total_novelty (),
+      Some(index) => {
+        self.my_level_novelty () / ((1<<path.len()) as f64)
+        + self.children [index].iter().map (| child | child.component_novelty(path[1..])).sum()
+      }
+    }
+  }
+  
+  fn mutated (pattern: Rc<Self>, music: & FamiliarityMusic)->FamiliarityPattern {
+    FamiliarityPattern {
+      level: pattern.level,
+      original: Some(pattern.clone()),
+    }
+  }
+}
+*/
+
+
