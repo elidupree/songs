@@ -312,7 +312,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   }*/
   
   
-  let mut generator = rand::chacha::ChaChaRng::from_seed(&[38]);
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[44]);
   //let notes = assemble_pattern (create_random_pattern ((1u32<<7) as f64, 1.0, &mut generator), 0.0);
   let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, (1u32<<7) as f64), 0.0);
   
@@ -329,7 +329,7 @@ fn random_pattern_note (duration: f64, volume: f64, generator: &mut ChaChaRng)->
   match generator.gen_range(0, 3) {
     0 => {
       let mut instrument = generator.gen_range(35, 83);
-      while instrument == 71 || instrument == 72 { instrument = generator.gen_range(35, 83); }
+      while instrument == 58 || instrument == 71 || instrument == 72 { instrument = generator.gen_range(35, 83); }
       Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64, 1.0, (100.0*volume) as i32, instrument))])
     },
     1 => {
