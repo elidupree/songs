@@ -4,6 +4,7 @@ extern crate portaudio;
 extern crate dsp;
 extern crate rand;
 
+
 use codecophony::*;
 use codecophony::phrase::{Phrase, PhraseNote};
 use rand::{Rng, SeedableRng, ChaChaRng};
@@ -313,24 +314,50 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   
   
   let mut generator = rand::chacha::ChaChaRng::from_seed(&[44]);
-  //let notes = assemble_pattern (create_random_pattern ((1u32<<7) as f64, 1.0, &mut generator), 0.0);
-  let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, (1u32<<7) as f64), 0.0);
+  //let notes = assemble_pattern (create_random_pattern (1<<11, 1.0, &mut generator), 0);
+  let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
+  let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
   
   let phrases = vec![];// vec![Phrase::from_iter (notes.iter())];
   (Box::new(notes), phrases)
 }
 
-fn pattern_silence_note()->Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>> {
-  Rc::new(move |time| vec![])
+
+#[derive (Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+enum PatternTimbre {
+  Percussion {instrument: i32},
+  Pitched {instrument: u32, pitch: i32}
 }
+
+#[derive (Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+struct PatternNote {
+  start: i32,
+  duration: i32,
+  timbre: PatternTimbre,
+}
+
+impl PatternNote {
+  fn to_renderable (&self, scale: f64, volume: f64)->Box<Renderable<[Output; CHANNELS]> + Send> {
+    let time = self.start as f64*scale;
+    let duration = self.duration as f64*scale;
+    match self.timbre {
+      PatternTimbre::Percussion {instrument} => Box::new(MIDIPercussionNote::new(time, 1.0, (100.0*volume) as i32, instrument)),
+      PatternTimbre::Pitched {instrument, pitch} => {
+        let velocity_penalty = max (0, pitch - 60);
+        Box::new(MIDIPitchedNote::new(time, self.duration as f64*scale, pitch, (100.0*volume) as i32 - velocity_penalty, instrument))
+      }
+    }
+  }
+}
+
 use std::cmp::max;
-fn random_pattern_note (duration: f64, volume: f64, generator: &mut ChaChaRng)->Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>> {
+fn random_pattern_note (generator: &mut ChaChaRng)->Vec<PatternTimbre> {
   match generator.gen_range(0, 3) {
     0 => {
       let mut instrument = generator.gen_range(35, 83);
       while instrument == 58 || instrument == 71 || instrument == 72 { instrument = generator.gen_range(35, 83); }
-      Rc::new(move |time| vec![Box::new(MIDIPercussionNote::new(time as f64, 1.0, (100.0*volume) as i32, instrument))])
+      vec![PatternTimbre::Percussion {instrument}]
     },
     1 => {
       /*let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
@@ -339,64 +366,63 @@ fn random_pattern_note (duration: f64, volume: f64, generator: &mut ChaChaRng)->
       Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])*/
       let instrument = generator.gen_range(1, 120);
       let pitch = generator.gen_range(33, 81);
-      let velocity_penalty = max (0, pitch - 60);
-      Rc::new(move |time| vec![Box::new(MIDIPitchedNote::new(time as f64, duration, pitch, (100.0*volume) as i32 - velocity_penalty, instrument))])
+      vec![PatternTimbre::Pitched {instrument, pitch}]
     },
     _ => {
-      pattern_silence_note()
+      vec![]
     }
   }
 }
 
 #[derive (Clone)]
 struct Pattern {
-  duration: f64,
-  offset: f64,
+  duration: i32,
+  offset: i32,
   pattern_type: PatternType,
 }
 
 #[derive (Clone)]
 enum PatternType {
   Assemblage (Vec<Pattern>),
-  Notes (Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>>),
+  Notes (Vec<PatternTimbre>),
 }
 
-fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaChaRng)->Pattern {
+fn create_random_pattern (duration: i32, duplicates: f64, generator: &mut ChaChaRng)->Pattern {
   if duplicates < 32.0 && generator.gen_range(0, 3) == 0 {
     Pattern {
       duration,
-      offset: 0.0,
+      offset: 0,
       pattern_type: PatternType::Assemblage (vec![create_random_pattern (duration, 2.0*duplicates, generator), create_random_pattern (duration, 2.0*duplicates, generator)]),
     }
   }
-  else if duration > 1.0 || (duration.log2() > -0.1 - generator.gen_range(0,4) as f64) {
+  else if duration > 16 || (duration as f64/16.0 > (-0.1 - generator.gen_range(0,4i32) as f64).exp2()) {
     // long patterns must be constructed from sub-patterns
     if duplicates <= 1.0 || generator.gen_range(0, 4) != 0 { if generator.gen_range(0, 3) != 0 {
       //repeating pattern
-      let child = create_random_pattern (duration/2.0, duplicates, generator);
+      let child = create_random_pattern (duration/2, duplicates, generator);
       let mut second_child = child.clone();
-      second_child.offset += duration/2.0;
+      second_child.offset += duration/2;
       Pattern {
         duration,
-        offset: 0.0,
+        offset: 0,
         pattern_type: PatternType::Assemblage (vec![child, second_child]),
       }
     }
     else {
       // differing patterns
-      let child = create_random_pattern (duration/2.0, duplicates, generator);
-      let mut second_child = create_random_pattern (duration/2.0, duplicates, generator);
-      second_child.offset += duration/2.0;
+      let child = create_random_pattern (duration/2, duplicates, generator);
+      let mut second_child = create_random_pattern (duration/2, duplicates, generator);
+      second_child.offset += duration/2;
       Pattern {
         duration,
-        offset: 0.0,
+        offset: 0,
         pattern_type: PatternType::Assemblage (vec![child, second_child]),
       }
     } }
     else {
       // offset pattern
-      let mut child = create_random_pattern (duration/2.0, if duplicates > 1.5 {duplicates / 1.5} else {1.0}, generator);
-      if generator.gen() { child.offset += duration/2.0; }
+      let mut child = create_random_pattern (duration/2, if duplicates > 1.5 {duplicates / 1.5} else {1.0}, generator);
+      if generator.gen() { child.offset += duration/2; }
       child
     }
   }
@@ -404,13 +430,13 @@ fn create_random_pattern (duration: f64, duplicates: f64, generator: &mut ChaCha
     // short patterns are uhhh
     Pattern {
       duration,
-      offset: 0.0,
-      pattern_type: PatternType::Notes (random_pattern_note (duration, 1.0/(duplicates as f64).sqrt(), generator)),
+      offset: 0,
+      pattern_type: PatternType::Notes (random_pattern_note (generator)),
     }
   }
 }
 
-fn assemble_pattern (pattern: Pattern, offset: f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>> {
+fn assemble_pattern (pattern: Pattern, offset: i32)->Vec<PatternNote> {
   let mut result = Vec::new();
   match pattern.pattern_type {
     PatternType::Assemblage (patterns) => {
@@ -419,7 +445,9 @@ fn assemble_pattern (pattern: Pattern, offset: f64)->Vec<Box<Renderable<[Output;
       }
     },
     PatternType::Notes (notes) => {
-      return notes(offset + pattern.offset);
+      let my_offset = offset + pattern.offset;
+      let my_duration = pattern.duration;
+      return notes.iter().map (| timbre | PatternNote {start: my_offset, duration: my_duration, timbre: timbre.clone() }).collect();
     }
   }
   result
@@ -428,11 +456,11 @@ fn assemble_pattern (pattern: Pattern, offset: f64)->Vec<Box<Renderable<[Output;
 
 #[derive (Clone)]
 struct ForwardPattern {
-  duration: f64,
+  duration: i32,
   max_voices: i32,
   children: [Vec<ForwardPattern>; 2],
   //child_modification_parameters: ForwardPatternModificationParameters,
-  notes: Rc<Fn(f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>>>,
+  notes: Vec<PatternTimbre>,
 }
 
 struct ForwardPatternModificationParameters {
@@ -460,8 +488,8 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
     }
     collection.retain (|_| generator.gen_range(0,16)!=0i32);
     for _ in 0..3 {
-      if (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < 2.0 + pattern.duration.log2() {
-        collection.push (generate_forward_pattern (generator, pattern.duration/2.0));
+      if pattern.duration > 1 && (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < 2.0 + (pattern.duration as f64).log2() - 4.0 {
+        collection.push (generate_forward_pattern (generator, pattern.duration/2));
       }
     }
   }
@@ -477,17 +505,17 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
 }
 
 fn update_max_voices (pattern: &mut ForwardPattern) {
-  pattern.max_voices = pattern.children.iter().map (| collection | collection.iter().map (| child | child.max_voices).sum::<i32>()).max ().unwrap() + (pattern.notes)(1.0).len() as i32;
+  pattern.max_voices = pattern.children.iter().map (| collection | collection.iter().map (| child | child.max_voices).sum::<i32>()).max ().unwrap() + pattern.notes.len() as i32;
 }
 
 fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
-  pattern.notes = pattern_silence_note();
+  pattern.notes = Vec::new();
   
-  if pattern.duration <= 1.1 && generator.gen::<f64>()*2.0 < pattern.duration { 
-    pattern.notes = random_pattern_note (pattern.duration, 0.6, generator);
+  if pattern.duration <= 16 && generator.gen::<f64>()*2.0 < (pattern.duration as f64/16.0) { 
+    pattern.notes = random_pattern_note (generator);
   }
-  if pattern.duration >= 1.1 && generator.gen::<f64>()*2.0 < 1.0/pattern.duration { 
-    pattern.notes = random_pattern_note (pattern.duration, 0.6 / pattern.duration.log2(), generator);
+  if pattern.duration > 16 && generator.gen::<f64>()*2.0 < 16.0/pattern.duration as f64 { 
+    pattern.notes = random_pattern_note (generator);
   }
 }
 
@@ -496,14 +524,14 @@ fn expand_forward_pattern (pattern: ForwardPattern, generator: &mut ChaChaRng) -
   let mut next = pattern.clone();
   modify_forward_pattern (&mut next, & ForwardPatternModificationParameters{}, generator);
   
-  let duration = pattern.duration*2.0;
+  let duration = pattern.duration*2;
   
   let mut result = ForwardPattern {
     duration,
     max_voices: 0,
     //pattern_type,
     children: [vec![pattern], vec![next]],
-    notes: pattern_silence_note(),
+    notes: Vec::new(),
   };
   reroll_note(&mut result, generator);
   update_max_voices (&mut result);
@@ -511,14 +539,14 @@ fn expand_forward_pattern (pattern: ForwardPattern, generator: &mut ChaChaRng) -
 }
 fn generate_smallest_forward_pattern (generator: &mut ChaChaRng) -> ForwardPattern {
   ForwardPattern {
-    duration: 1.0/16.0,
+    duration: 1,
     max_voices: 0,
     children: [vec![], vec![]],
-    notes: pattern_silence_note(),
+    notes: Vec::new(),
   }
 }
 
-fn generate_forward_pattern (generator: &mut ChaChaRng, min_duration: f64) -> ForwardPattern {
+fn generate_forward_pattern (generator: &mut ChaChaRng, min_duration: i32) -> ForwardPattern {
   let mut pattern = generate_smallest_forward_pattern (generator);
   while pattern.duration < min_duration {
     pattern = expand_forward_pattern (pattern, generator);
@@ -527,12 +555,12 @@ fn generate_forward_pattern (generator: &mut ChaChaRng, min_duration: f64) -> Fo
 }
 
 
-fn assemble_forward_pattern (pattern: & ForwardPattern, offset: f64)->Vec<Box<Renderable<[Output; CHANNELS]> + Send>> {
+fn assemble_forward_pattern (pattern: & ForwardPattern, offset: i32)->Vec<PatternNote> {
   let mut result = Vec::new();
-  result.extend((pattern.notes)(offset));
+  result.extend(pattern.notes.iter().map (| timbre | PatternNote {start: offset, duration: pattern.duration, timbre: timbre.clone() }));
   for (index, children) in pattern.children.iter().enumerate() {
     for other_pattern in children.iter() {
-      result.extend (assemble_forward_pattern (other_pattern, offset + index as f64*other_pattern.duration));
+      result.extend (assemble_forward_pattern (other_pattern, offset + index as i32*other_pattern.duration));
     }
   }
   result
