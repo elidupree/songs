@@ -1,15 +1,10 @@
-extern crate codecophony;
-extern crate hound;
-extern crate portaudio;
-extern crate dsp;
-extern crate rand;
-
-
+use codecophony;
 use codecophony::*;
 use codecophony::phrase::{Phrase, PhraseNote};
-use rand::{Rng, SeedableRng, ChaChaRng};
+use rand::{self, Rng, SeedableRng, ChaChaRng};
 use std::iter::FromIterator;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use ordered_float::OrderedFloat;
 use std::path::Path;
 use std::str::FromStr;
 use std::rc::Rc;
@@ -315,7 +310,8 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   
   let mut generator = rand::chacha::ChaChaRng::from_seed(&[45]);
   //let notes = assemble_pattern (create_random_pattern (1<<11, 1.0, &mut generator), 0);
-  let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
+  //let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
+  let notes = generate_familiarity_music (&mut generator, 1<<9);
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
   
@@ -570,6 +566,66 @@ fn assemble_forward_pattern (pattern: & ForwardPattern, offset: i32)->Vec<Patter
   result
 }
 
+
+fn familiarity (new_timbre: &PatternTimbre, time: i32, music: &Vec<PatternNote>)-> f64 {
+  let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
+  let analogues= music.iter().filter (| note | note.timbre == *new_timbre && note.start < time);
+  let analogue_scores = analogues.map(| analogue | {
+    let nudged_priors: HashSet<PatternNote> = music.iter()
+      .filter (| note | note.start < analogue.start)
+      .map(| note | PatternNote {start: note.start + time - analogue.start, .. note.clone()})
+      .collect();
+    let differences = music_map.symmetric_difference (&nudged_priors);
+    let distance_to_last_difference = differences.map(|note| time - note.start).min().unwrap();
+    OrderedFloat(distance_to_last_difference as f64)
+  });
+  analogue_scores.max().unwrap_or(OrderedFloat(0.0)).0
+}
+
+fn generate_familiarity_music (generator: &mut ChaChaRng, duration: i32)->Vec<PatternNote> {
+  let mut music = Vec::new();
+  let mut notes = vec![random_pattern_timbre(generator)];
+  for time in 0..duration {
+    let choice = //generator.choose (&notes).unwrap().clone();
+      notes.iter().max_by_key(|timbre| {
+        let fam = familiarity (timbre, time, &music);
+        let ideal = (music.len() as f64)/32.0;//2.0;//(music.len() as f64).sqrt();
+        let ideal = (32 - ((time & 64) - 32).abs()) as f64 / 2.0;
+        OrderedFloat (-((fam - ideal).abs()))
+      }).unwrap().clone();
+    
+    music.push (PatternNote {start:time, duration:1, timbre:choice.clone()});
+    if choice == *notes.last().unwrap() {
+      let mut new_option = random_pattern_timbre (generator);
+      while notes.iter().find (| existing | **existing == new_option).is_some() {
+        new_option = random_pattern_timbre (generator);
+      }
+      notes.push (new_option);
+    }
+  }
+  music
+}
+
+/*
+
+struct FamiliarityMusic {
+  existing_patterns: Vec<Vec<Rc<FamiliarityPattern>>>,
+  components: Vec<Rc<FamiliarityPattern>>,
+}
+
+
+fn similarity (subject_pattern: ForwardPattern, reference_pattern: ForwardPattern, offset: i32) {
+
+}
+
+fn generate_familiarity_pattern (generator: &mut ChaChaRng, min_duration: i32) -> ForwardPattern {
+  let mut pattern = generate_smallest_forward_pattern (generator);
+  while pattern.duration < min_duration {
+    pattern = expand_forward_pattern (pattern, generator);
+  }
+  pattern
+}
+*/
 
 /*
 struct FamiliarityPattern {
