@@ -642,6 +642,22 @@ fn maximal_repeating_subsequences (music: & Vec<PatternNote>)->Vec<Subsequence> 
   result
 }
 
+fn repetitiveness (music: & Vec<PatternNote>)-> f64 {
+  let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
+  let mut max_overlap = 0;
+  for offset in 1..music.last().unwrap().start {
+    let mut overlap = 0;
+    for note in music.iter() {
+      if music_map.contains (& PatternNote { start: note.start + offset, .. note.clone()}) {
+        overlap += 1;
+      }
+    }
+    if overlap > max_overlap {max_overlap = overlap;}
+  }
+  let fraction_overlap = max_overlap as f64 / music.len() as f64;
+  fraction_overlap / (1.0 - fraction_overlap)
+}
+
 fn unfinished_subset (pattern: & Subsequence, music: & Vec<PatternNote>)->Option <UnfinishedSubSubsequence> {
   let current_last = music.last().unwrap().start;
   let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
@@ -681,7 +697,7 @@ fn add_familiarity2_note (generator: &mut ChaChaRng, music: &mut Vec<PatternNote
         
         }
       }).sum();*/
-      if pattern.notes.last().unwrap().start + subset.offset <= end {
+      if pattern.notes.last().unwrap().start + subset.offset <= end && repetitiveness(&pattern.notes) < 4.0 {
         *entry += importance;
       }
       else {
