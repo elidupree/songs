@@ -590,7 +590,8 @@ fn generate_familiarity_music (generator: &mut ChaChaRng, duration: i32)->Vec<Pa
       notes.iter().max_by_key(|timbre| {
         let fam = familiarity (timbre, time, &music);
         let ideal = (music.len() as f64)/32.0;//2.0;//(music.len() as f64).sqrt();
-        let ideal = (32 - ((time & 64) - 32).abs()) as f64 / 2.0;
+        let ideal = ((32 - ((time & 63) - 32).abs()) as f64 / 3.0);
+        println!("{:?}", (time, ideal));
         OrderedFloat (-((fam - ideal).abs()))
       }).unwrap().clone();
     
