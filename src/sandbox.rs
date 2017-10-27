@@ -313,7 +313,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   }*/
   
   
-  let mut generator = rand::chacha::ChaChaRng::from_seed(&[44]);
+  let mut generator = rand::chacha::ChaChaRng::from_seed(&[45]);
   //let notes = assemble_pattern (create_random_pattern (1<<11, 1.0, &mut generator), 0);
   let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
@@ -352,25 +352,29 @@ impl PatternNote {
 }
 
 use std::cmp::max;
-fn random_pattern_note (generator: &mut ChaChaRng)->Vec<PatternTimbre> {
-  match generator.gen_range(0, 3) {
-    0 => {
-      let mut instrument = generator.gen_range(35, 83);
-      while instrument == 58 || instrument == 71 || instrument == 72 { instrument = generator.gen_range(35, 83); }
-      vec![PatternTimbre::Percussion {instrument}]
-    },
-    1 => {
-      /*let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
-      let mut amplitude = 0.2*volume*220.0/frequency;
-      if amplitude > 0.5*volume { amplitude = 0.5*volume.sqrt(); } 
-      Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])*/
-      let instrument = generator.gen_range(1, 120);
-      let pitch = generator.gen_range(33, 81);
-      vec![PatternTimbre::Pitched {instrument, pitch}]
-    },
-    _ => {
-      vec![]
-    }
+fn random_pattern_timbre (generator: &mut ChaChaRng)->PatternTimbre {
+  if generator.gen() {
+    let mut instrument = generator.gen_range(35, 83);
+    while instrument == 58 || instrument == 71 || instrument == 72 { instrument = generator.gen_range(35, 83); }
+    PatternTimbre::Percussion {instrument}
+  }
+  else {
+    /*let frequency: f64 = ((generator.gen::<f64>()*2f64-1f64)+(220f64).ln()).exp();
+    let mut amplitude = 0.2*volume*220.0/frequency;
+    if amplitude > 0.5*volume { amplitude = 0.5*volume.sqrt(); } 
+    Rc::new(move |time| vec![Box::new(codecophony::SineWave { start: time, duration, frequency, amplitude})])*/
+    let instrument = generator.gen_range(1, 120);
+    let pitch = generator.gen_range(33, 81);
+    PatternTimbre::Pitched {instrument, pitch}
+  }
+}
+
+fn random_pattern_timbre_or_silence (generator: &mut ChaChaRng)->Vec<PatternTimbre> {
+  if generator.gen_range(0, 3) != 0 {
+    vec![random_pattern_timbre(generator)]
+  }
+  else {  
+    vec![]
   }
 }
 
@@ -431,7 +435,7 @@ fn create_random_pattern (duration: i32, duplicates: f64, generator: &mut ChaCha
     Pattern {
       duration,
       offset: 0,
-      pattern_type: PatternType::Notes (random_pattern_note (generator)),
+      pattern_type: PatternType::Notes (random_pattern_timbre_or_silence (generator)),
     }
   }
 }
@@ -512,10 +516,10 @@ fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
   pattern.notes = Vec::new();
   
   if pattern.duration <= 16 && generator.gen::<f64>()*2.0 < (pattern.duration as f64/16.0) { 
-    pattern.notes = random_pattern_note (generator);
+    pattern.notes = random_pattern_timbre_or_silence (generator);
   }
   if pattern.duration > 16 && generator.gen::<f64>()*2.0 < 16.0/pattern.duration as f64 { 
-    pattern.notes = random_pattern_note (generator);
+    pattern.notes = random_pattern_timbre_or_silence (generator);
   }
 }
 
