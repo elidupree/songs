@@ -615,6 +615,7 @@ fn generate_familiarity_music (generator: &mut ChaChaRng, duration: i32)->Vec<Pa
 
 struct Subsequence {
   notes: Vec<PatternNote>,
+  occurrences: Vec<i32>,
 }
 struct UnfinishedSubSubsequence {
   next_note: PatternNote,
@@ -626,16 +627,16 @@ fn maximal_repeating_subsequences (music: & Vec<PatternNote>)->Vec<Subsequence> 
   let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
   let mut result = Vec::new();
   for offset in 1..music.last().unwrap().start {
-    let mut subsequence = Subsequence {notes: Vec::new()};
+    let mut subsequence_notes = Vec::new();
     let mut first = None;
     for note in music.iter() {
       if music_map.contains (& PatternNote { start: note.start + offset, .. note.clone()}) {
         if first == None {first = Some(note.start);}
-        subsequence.notes.push(PatternNote { start: note.start - first.unwrap(), .. note.clone()});
+        subsequence_notes.push(PatternNote { start: note.start - first.unwrap(), .. note.clone()});
       }
     }
-    if !subsequence.notes.is_empty() {
-      result.push (subsequence);
+    if !subsequence_notes.is_empty() {
+      result.push (Subsequence {notes: subsequence_notes, occurrences: vec![first.unwrap(), first.unwrap() + offset]});
     }
   }
   result
@@ -685,6 +686,17 @@ fn add_familiarity2_note (generator: &mut ChaChaRng, music: &mut Vec<PatternNote
       }
       else {
         *entry -= importance;
+      }
+    }
+    else if let Some(&offset) = pattern.occurrences.first() {
+      let pattern_stride = pattern.occurrences.last().unwrap() - offset;
+      let pattern_end = pattern.notes.last().unwrap().start + offset;
+      let observed_next = music.iter().filter (| note | note.start > pattern_end).min_by_key(|note| note.start).unwrap();
+      let importance = pattern.notes.len() as f64 / 100.0;
+      let next_note = PatternNote { start: observed_next.start + pattern_stride, .. observed_next.clone()};
+      if next_note.start >= current_last {
+        let entry = scores.entry (next_note.clone()).or_insert (0.0);
+        *entry += importance;
       }
     }
   }
