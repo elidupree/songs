@@ -311,7 +311,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   let mut generator = rand::chacha::ChaChaRng::from_seed(&[45]);
   //let notes = assemble_pattern (create_random_pattern (1<<11, 1.0, &mut generator), 0);
   //let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
-  let notes = generate_familiarity_music (&mut generator, 1<<9);
+  let notes = generate_familiarity2_music (&mut generator, 1<<9);
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
   
@@ -603,6 +603,106 @@ fn generate_familiarity_music (generator: &mut ChaChaRng, duration: i32)->Vec<Pa
       }
       notes.push (new_option);
     }
+  }
+  music
+}
+
+
+
+/*fn duration (notes: & Vec<PatternNote>)->i32 {
+  notes.last().unwrap().start - notes.first().unwrap().start
+}*/
+
+struct Subsequence {
+  notes: Vec<PatternNote>,
+}
+struct UnfinishedSubSubsequence {
+  next_note: PatternNote,
+  offset: i32,
+}
+
+fn maximal_repeating_subsequences (music: & Vec<PatternNote>)->Vec<Subsequence> {
+  if music.is_empty() {return Vec::new()}
+  let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
+  let mut result = Vec::new();
+  for offset in 1..music.last().unwrap().start {
+    let mut subsequence = Subsequence {notes: Vec::new()};
+    let mut first = None;
+    for note in music.iter() {
+      if music_map.contains (& PatternNote { start: note.start + offset, .. note.clone()}) {
+        if first == None {first = Some(note.start);}
+        subsequence.notes.push(PatternNote { start: note.start - first.unwrap(), .. note.clone()});
+      }
+    }
+    if !subsequence.notes.is_empty() {
+      result.push (subsequence);
+    }
+  }
+  result
+}
+
+fn unfinished_subset (pattern: & Subsequence, music: & Vec<PatternNote>)->Option <UnfinishedSubSubsequence> {
+  let current_last = music.last().unwrap().start;
+  let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
+  'outer: for offset in (current_last - pattern.notes.last().unwrap().start + 1)..(current_last+1) {
+    for note in pattern.notes.iter() {
+      let new_start = note.start + offset;
+      let offset_note = PatternNote { start: new_start, .. note.clone()};
+      if new_start > current_last {
+        return Some(UnfinishedSubSubsequence {
+          next_note: offset_note, offset
+        })
+      }
+      if !music_map.contains (&offset_note) {
+        continue 'outer;
+      }
+    }
+  }
+  None
+}
+
+fn add_familiarity2_note (generator: &mut ChaChaRng, music: &mut Vec<PatternNote>, end: i32) {
+  if music.is_empty() {
+    music.push (PatternNote {start:0, duration:1, timbre:random_pattern_timbre(generator)});
+  }
+
+  let patterns = maximal_repeating_subsequences (music);
+  let mut scores: HashMap <PatternNote, f64> = HashMap::new();
+  
+  let current_last = music.last().unwrap().start;
+  
+  for pattern in patterns.iter() {
+    if let Some(subset) = unfinished_subset (pattern, music) {
+      let entry = scores.entry (subset.next_note.clone()).or_insert (0.0);
+      let importance = pattern.notes.len() as f64;/*iter().map (| note | {
+        let offset_time = notes.start + subset.offset;
+        if offset_time > current_last {0.0} else {
+        
+        }
+      }).sum();*/
+      if pattern.notes.last().unwrap().start + subset.offset <= end {
+        *entry += importance;
+      }
+      else {
+        *entry -= importance;
+      }
+    }
+  }
+  
+  let next_note = scores.into_iter().filter (| pair | pair.0.start < current_last + 8 && pair.1 > 0.0).min_by_key(| pair | pair.0.start).map(|pair| pair.0).unwrap_or_else(|| {
+    let time = match music.last() {
+      None => 0,
+      Some(note) => note.start + note.duration,
+    };
+    PatternNote {start:time, duration:1, timbre:random_pattern_timbre(generator)}
+  });
+  music.push(next_note);
+}
+
+fn generate_familiarity2_music (generator: &mut ChaChaRng, min_duration: i32)->Vec<PatternNote> {
+  let mut music = Vec::new();
+  while music.last().map_or(true, |note: & PatternNote | note.start < min_duration) {
+    add_familiarity2_note (generator, &mut music, min_duration);
   }
   music
 }
