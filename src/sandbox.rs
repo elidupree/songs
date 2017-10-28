@@ -373,7 +373,7 @@ impl PatternNote {
   }
 }
 
-use std::cmp::max;
+use std::cmp::{min,max};
 fn random_pattern_timbre (generator: &mut ChaChaRng)->PatternTimbre {
   if generator.gen() {
     let mut instrument = generator.gen_range(35, 83);
@@ -628,7 +628,7 @@ impl MusicSpecification {
     20
   }
   fn target_voices (&self, position: &PatternPosition)->i32 {
-    if position.duration > 16*8 {0} else {max( 4, position.duration / 16)}
+    if position.duration > 16*8 {0} else {min( 10, position.duration / 8)}
   }
   fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
     0.5
@@ -738,10 +738,16 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
         modify_child (child, &tweak_custom_pattern);
       }
     }
-    if pattern.max_voices <specification.target_voices (&pattern.position) {
+    while pattern.max_voices <specification.target_voices (&pattern.position) {
+      println!("{:?}", (&pattern.position, &pattern.max_voices, specification.target_voices (&pattern.position)));
+      if pattern.notes.is_empty() {
+        custom_reroll_note (pattern, &mut generator);
+      }
       for collection in pattern.children.iter_mut() {
         collection.1.push (generate_custom_pattern (&mut unstable, collection.0.start, collection.0.duration, specification)); 
       }
+      update_custom_max_voices (pattern);
+      println!("{:?} er", (&pattern.position, &pattern.max_voices, specification.target_voices (&pattern.position)));
     }
     if generator.gen_range(0,118)==0i32 { 
       custom_reroll_note (pattern, &mut generator); 
@@ -827,7 +833,7 @@ fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, spe
   let mut next = pattern.clone();
   nudge_custom_pattern (&mut next, pattern.position.duration);
   // TODO remove_repetitive_voices
-  limit_custom_pattern_voices (&mut next, generator.gen(), specification);
+  generator.gen::<u32>();//limit_custom_pattern_voices (&mut next, generator.gen(), specification);
   tweak_custom_pattern (&mut next, generator.gen(), specification);
   
   let duration = pattern.position.duration*2;
