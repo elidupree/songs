@@ -498,7 +498,7 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
     let modified_children_index = generator.gen_range (0, 2);
     let reference_children_index = (modified_children_index + 1) & 1;
   }*/
-  if generator.gen_range(0,18)==0i32 { 
+  if generator.gen_range(0,118)==0i32 { 
     reroll_note (pattern, generator); 
   }
   
