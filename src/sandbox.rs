@@ -314,7 +314,7 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   //let notes = generate_familiarity_music (&mut generator, 1<<9);
   //let notes = generate_familiarity2_music (&mut generator, 1<<9);
   let pattern = generate_custom_pattern (&mut generator, 0, 1<<11, & MusicSpecification {});
-  println!("{:?}", pattern);
+  //println!("{:?}", pattern);
   let notes = assemble_custom_pattern (& pattern);
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
@@ -628,10 +628,10 @@ impl MusicSpecification {
     20
   }
   fn target_voices (&self, position: &PatternPosition)->i32 {
-    if position.duration > 16*8 {0} else {max( 10, position.duration / 8)}
+    if position.duration > 16*8 {0} else {max( 2, position.duration / 16)}
   }
   fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
-    0.75
+    0.5
   }
 }
 
@@ -815,7 +815,7 @@ fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, spe
   let duration = pattern.position.duration*2;
   
   let mut result = CustomPattern {
-    serial_number: new_serial_number(),
+    serial_number: ChaChaRng::from_seed(&[pattern.serial_number as u32]).gen(),
     position: PatternPosition {start: pattern.position.start, duration},
     max_voices: 0,
     //pattern_type,
