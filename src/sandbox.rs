@@ -746,6 +746,17 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
     if generator.gen_range(0,118)==0i32 { 
       custom_reroll_note (pattern, &mut generator); 
     }
+    if pattern.position.duration >= 32 && generator.gen_range(0,8)==0i32 { 
+      let transposition = generator.gen_range(-7,8);
+      for_all_subpatterns (pattern, &mut |pattern| {
+        for note in pattern.notes.iter_mut() {
+          match note {
+            &mut PatternTimbre::Pitched {ref mut pitch, ..} => *pitch += transposition,
+            _=>(),
+          };
+        }
+      });
+    }
   });
 }
 
