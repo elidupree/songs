@@ -628,7 +628,7 @@ impl MusicSpecification {
     20
   }
   fn target_voices (&self, position: &PatternPosition)->i32 {
-    if position.duration > 16*8 {0} else {max( 2, position.duration / 16)}
+    if position.duration > 16*8 {0} else {max( 4, position.duration / 16)}
   }
   fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
     0.5
@@ -732,6 +732,7 @@ fn nudge_custom_pattern (pattern: &mut CustomPattern, time: i32) {
 fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: & MusicSpecification) {
   modify_custom_pattern (pattern, seed, specification, &| pattern, mut generator, modify_child | {
     let mut child_chooser = ChaChaRng::from_seed(&[generator.gen()]);
+    let mut unstable = ChaChaRng::from_seed(&[generator.gen(), pattern.position.start as u32, pattern.position.duration as u32]);
     for collection in pattern.children.iter_mut() {
       for child in collection.1.iter_mut() {
         modify_child (child, &tweak_custom_pattern);
@@ -739,7 +740,7 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
     }
     if pattern.max_voices <specification.target_voices (&pattern.position) {
       for collection in pattern.children.iter_mut() {
-        collection.1.push (generate_custom_pattern (&mut generator, collection.0.start, collection.0.duration, specification)); 
+        collection.1.push (generate_custom_pattern (&mut unstable, collection.0.start, collection.0.duration, specification)); 
       }
     }
     if generator.gen_range(0,118)==0i32 { 
