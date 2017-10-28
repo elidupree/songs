@@ -310,8 +310,9 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   
   let mut generator = rand::chacha::ChaChaRng::from_seed(&[45]);
   //let notes = assemble_pattern (create_random_pattern (1<<11, 1.0, &mut generator), 0);
-  //let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
-  let notes = generate_familiarity2_music (&mut generator, 1<<9);
+  let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
+  //let notes = generate_familiarity_music (&mut generator, 1<<9);
+  //let notes = generate_familiarity2_music (&mut generator, 1<<9);
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
   
@@ -486,7 +487,7 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
         modify_forward_pattern (child, ancestor_parameters, generator);
       }
     }
-    collection.retain (|_| generator.gen_range(0,16)!=0i32);
+    collection.retain (|_| generator.gen_range(0,116)!=0i32);
     for _ in 0..3 {
       if pattern.duration > 1 && (collection.iter().map (| child | child.max_voices).sum::<i32>() as f64) < 2.0 + (pattern.duration as f64).log2() - 4.0 {
         collection.push (generate_forward_pattern (generator, pattern.duration/2));
@@ -497,7 +498,7 @@ fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & 
     let modified_children_index = generator.gen_range (0, 2);
     let reference_children_index = (modified_children_index + 1) & 1;
   }*/
-  if generator.gen_range(0,8)==0i32 { 
+  if generator.gen_range(0,18)==0i32 { 
     reroll_note (pattern, generator); 
   }
   
