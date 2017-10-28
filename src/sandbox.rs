@@ -539,12 +539,15 @@ fn expand_forward_pattern (pattern: ForwardPattern, generator: &mut ChaChaRng) -
   result
 }
 fn generate_smallest_forward_pattern (generator: &mut ChaChaRng) -> ForwardPattern {
-  ForwardPattern {
+  let mut result = ForwardPattern {
     duration: 1,
     max_voices: 0,
     children: [vec![], vec![]],
     notes: Vec::new(),
-  }
+  };
+  reroll_note(&mut result, generator);
+  update_max_voices (&mut result);
+  result
 }
 
 fn generate_forward_pattern (generator: &mut ChaChaRng, min_duration: i32) -> ForwardPattern {
