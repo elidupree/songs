@@ -321,6 +321,13 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
 }
 
 
+
+
+
+
+
+
+
 #[derive (Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
 enum PatternTimbre {
   Percussion {instrument: i32},
@@ -374,6 +381,12 @@ fn random_pattern_timbre_or_silence (generator: &mut ChaChaRng)->Vec<PatternTimb
     vec![]
   }
 }
+
+
+
+
+
+
 
 #[derive (Clone)]
 struct Pattern {
@@ -453,6 +466,12 @@ fn assemble_pattern (pattern: Pattern, offset: i32)->Vec<PatternNote> {
   }
   result
 }
+
+
+
+
+
+
 
 
 #[derive (Clone)]
@@ -571,6 +590,13 @@ fn assemble_forward_pattern (pattern: & ForwardPattern, offset: i32)->Vec<Patter
 }
 
 
+
+
+
+
+
+
+
 fn familiarity (new_timbre: &PatternTimbre, time: i32, music: &Vec<PatternNote>)-> f64 {
   let music_map: HashSet<PatternNote> = music.iter().cloned().collect();
   let analogues= music.iter().filter (| note | note.timbre == *new_timbre && note.start < time);
@@ -610,6 +636,12 @@ fn generate_familiarity_music (generator: &mut ChaChaRng, duration: i32)->Vec<Pa
   }
   music
 }
+
+
+
+
+
+
 
 
 
