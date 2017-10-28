@@ -762,6 +762,12 @@ fn limit_custom_pattern_voices (pattern: &mut CustomPattern, seed: u32, specific
   });
 }
 
+fn choose_child (children: & Vec<CustomPattern>, seed: u32)->usize {
+  children.iter().enumerate().max_by_key(|&(index, child)| {
+    ChaChaRng::from_seed(&[seed, child.serial_number as u32]).gen::<i32>()
+  }).unwrap().0
+}
+
 fn reduce_custom_pattern_voices (pattern: &mut CustomPattern, seed: u32, specification: & MusicSpecification) {
   modify_custom_pattern (pattern, seed, specification, &| pattern, mut generator, modify_child | {
     let original = pattern.max_voices;
@@ -772,7 +778,7 @@ fn reduce_custom_pattern_voices (pattern: &mut CustomPattern, seed: u32, specifi
       else if let Some(collection) = pattern.children.iter_mut().max_by_key (|collection|
           collection.1.iter().map (| child | child.max_voices).sum::<i32>()
         ) {
-        let index = generator.gen_range (0, collection.1.len());
+        let index = choose_child (&collection.1, generator.gen());
         if (collection.1[index].max_voices <= 1) || (collection.1.len() > 1 && specification.may_delete_whole_patterns(&collection.0)) {
           collection.1.remove (index);
         }
