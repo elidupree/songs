@@ -313,7 +313,9 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   //let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
   //let notes = generate_familiarity_music (&mut generator, 1<<9);
   //let notes = generate_familiarity2_music (&mut generator, 1<<9);
-  let notes = assemble_custom_pattern (& generate_custom_pattern (&mut generator, 0, 1<<11, & MusicSpecification {}));
+  let pattern = generate_custom_pattern (&mut generator, 0, 1<<11, & MusicSpecification {});
+  println!("{:?}", pattern);
+  let notes = assemble_custom_pattern (& pattern);
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
   
@@ -625,6 +627,9 @@ impl MusicSpecification {
   fn voice_limit (&self, position: &PatternPosition)->i32 {
     20
   }
+  fn target_voices (&self, position: &PatternPosition)->i32 {
+    if position.duration > 16*8 {0} else {max( 10, position.duration / 8)}
+  }
   fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
     0.75
   }
@@ -715,6 +720,15 @@ fn for_all_subpatterns (pattern: &mut CustomPattern, callback: &mut FnMut(
   }
 }
 
+fn nudge_custom_pattern (pattern: &mut CustomPattern, time: i32) {
+  for_all_subpatterns (pattern, &mut |foo| {
+    foo.position.start += time;
+    for collection in foo.children.iter_mut() {
+      collection.0.start += time;
+    }
+  });
+}
+
 fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: & MusicSpecification) {
   modify_custom_pattern (pattern, seed, specification, &| pattern, mut generator, modify_child | {
     let mut child_chooser = ChaChaRng::from_seed(&[generator.gen()]);
@@ -722,6 +736,14 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
       for child in collection.1.iter_mut() {
         modify_child (child, &tweak_custom_pattern);
       }
+    }
+    if pattern.max_voices <specification.target_voices (&pattern.position) {
+      for collection in pattern.children.iter_mut() {
+        collection.1.push (generate_custom_pattern (&mut generator, collection.0.start, collection.0.duration, specification)); 
+      }
+    }
+    if generator.gen_range(0,118)==0i32 { 
+      custom_reroll_note (pattern, &mut generator); 
     }
   });
 }
@@ -785,7 +807,7 @@ fn custom_reroll_note (pattern: &mut CustomPattern, generator: &mut ChaChaRng) {
 
 fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
   let mut next = pattern.clone();
-  for_all_subpatterns (&mut next, &mut |foo| foo.position.start += pattern.position.duration);
+  nudge_custom_pattern (&mut next, pattern.position.duration);
   // TODO remove_repetitive_voices
   limit_custom_pattern_voices (&mut next, generator.gen(), specification);
   tweak_custom_pattern (&mut next, generator.gen(), specification);
