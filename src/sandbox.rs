@@ -310,9 +310,10 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
   
   let mut generator = rand::chacha::ChaChaRng::from_seed(&[45]);
   //let notes = assemble_pattern (create_random_pattern (1<<11, 1.0, &mut generator), 0);
-  let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
+  //let notes = assemble_forward_pattern (& generate_forward_pattern (&mut generator, 1<<11), 0);
   //let notes = generate_familiarity_music (&mut generator, 1<<9);
   //let notes = generate_familiarity2_music (&mut generator, 1<<9);
+  let notes = assemble_custom_pattern (& generate_custom_pattern (&mut generator, 0, 1<<11, & MusicSpecification {}));
   let notes: Vec<_> = notes.into_iter().map (| note | note.to_renderable(1.0/16.0, 0.6)).collect();
   
   
@@ -322,6 +323,21 @@ pub fn current_playground() -> (Box<Renderable<[Output; CHANNELS]> + Send>, Vec<
 
 
 
+
+
+fn weighted_random<'a, T> (generator: &mut ChaChaRng, choices: &'a [(f64, T)]) -> &'a T {
+  let total: f64 = choices.iter().map (| choice | choice.0).sum();
+  let mut value = generator.gen::<f64>()*total;
+  for choice in choices {
+    value -= choice.0;
+    if value < 0.0 { return &choice.1; }
+  }
+  &choices.last().unwrap().1
+}
+fn weighted_random_with<T, F: Fn(&mut ChaChaRng) -> T> (generator: &mut ChaChaRng, choices: & [(f64, F)]) -> T {
+  let func = weighted_random(generator, choices);
+  (func)(generator)
+}
 
 
 
@@ -479,31 +495,15 @@ struct ForwardPattern {
   duration: i32,
   max_voices: i32,
   children: [Vec<ForwardPattern>; 2],
-  //child_modification_parameters: ForwardPatternModificationParameters,
   notes: Vec<PatternTimbre>,
 }
 
-struct ForwardPatternModificationParameters {
 
-}
-
-/*
-trait ForwardPatternType {
-  fn modified (&self, parameters: ForwardPatternModificationParameters)->Self;
-  fn new_random (generator: &mut ChaChaRng)->Self;
-  fn max_voices (&self)->i32,
-}
-
-fn new_random_forward_pattern_type (generator: &mut ChaChaRng)-> {
-  
-}
-*/
-
-fn modify_forward_pattern (pattern: &mut ForwardPattern, ancestor_parameters: & ForwardPatternModificationParameters, generator: &mut ChaChaRng) {
+fn modify_forward_pattern (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
   for collection in pattern.children.iter_mut() {
     for child in collection.iter_mut() {
       if generator.gen_range(0,3)!=0i32 {
-        modify_forward_pattern (child, ancestor_parameters, generator);
+        modify_forward_pattern (child, generator);
       }
     }
     collection.retain (|_| generator.gen_range(0,116)!=0i32);
@@ -542,7 +542,7 @@ fn reroll_note (pattern: &mut ForwardPattern, generator: &mut ChaChaRng) {
 fn expand_forward_pattern (pattern: ForwardPattern, generator: &mut ChaChaRng) -> ForwardPattern {
   //let pattern_type = ModifiedRepeat::new (pattern, generator);
   let mut next = pattern.clone();
-  modify_forward_pattern (&mut next, & ForwardPatternModificationParameters{}, generator);
+  modify_forward_pattern (&mut next, generator);
   
   let duration = pattern.duration*2;
   
@@ -590,6 +590,252 @@ fn assemble_forward_pattern (pattern: & ForwardPattern, offset: i32)->Vec<Patter
 }
 
 
+
+
+
+/*
+struct PatternModification {
+  seed: u32,
+  modification_type: PatternModificationType 
+}
+enum PatternModificationType {
+  ClampVoices,
+  NewSubpattern,
+  RerollNote,
+  Repeated,
+  Disparate,
+}
+fn apply_modification (pattern: CustomPattern, modification: PatternModification) {
+  let mut generator = ChaChaRng::from_seed(&[modification.seed]);
+  match modification.modification_type {
+    PatternModificationType::Remove => {
+      
+    }
+  }
+}*/
+
+struct MusicSpecification {
+
+}
+
+impl MusicSpecification {
+  fn may_delete_whole_patterns (&self, position: &PatternPosition)->bool {
+    position.duration <= 32
+  }
+  fn voice_limit (&self, position: &PatternPosition)->i32 {
+    20
+  }
+  fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
+    0.75
+  }
+}
+
+use std::cell::Cell;
+thread_local! {
+  static NEXT_SERIAL_NUMBER: Cell <u64> = Cell::new (0);
+}
+fn new_serial_number()->u64 {
+  NEXT_SERIAL_NUMBER.with (| cell | {
+    let result = cell.get();
+    cell.set (result + 1);
+    result
+  })
+}
+
+#[derive (Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Debug)]
+struct PatternPosition {
+  start: i32,
+  duration: i32,
+}
+
+#[derive (Clone, Serialize, Deserialize, Debug)]
+struct CustomPattern {
+  serial_number: u64,
+  position: PatternPosition,
+  max_voices: i32,
+  children: Vec<(PatternPosition, Vec<CustomPattern>)>,
+  notes: Vec<PatternTimbre>,
+}
+
+
+fn modify_custom_pattern (
+    pattern: &mut CustomPattern,
+    seed: u32,
+    specification: & MusicSpecification,
+    callback: &Fn(
+      &mut CustomPattern,
+      ChaChaRng,
+      &mut FnMut (
+        &mut CustomPattern,
+        & Fn(
+          &mut CustomPattern,
+          u32,
+          & MusicSpecification
+        )
+      )
+    )
+  ) {
+  let mut generator = ChaChaRng::from_seed(&[seed, pattern.serial_number as u32]);
+  let mut child_chooser = ChaChaRng::from_seed(&[generator.gen()]);
+  
+  let mut child_seed_chooser = ChaChaRng::from_seed(&[generator.gen()]);
+  let modify_children_the_same_way = if generator.gen::<f64>() < specification.modify_children_the_same_way_chance (&pattern.position) {Some(child_seed_chooser.gen())} else {None};
+  
+  let mut get_child_seed = ||->u32 {
+    if let Some(seed) = modify_children_the_same_way {
+      seed
+    }
+    else {
+      child_seed_chooser.gen()
+    }
+  };
+  
+  let mut modify_child = | child: &mut CustomPattern, callback:
+        & Fn(
+          &mut CustomPattern,
+          u32,
+          & MusicSpecification
+        )
+ | {
+    callback(child, get_child_seed(), specification);
+    update_custom_max_voices (child);
+  };
+  
+  callback (pattern, generator, &mut modify_child);
+  update_custom_max_voices (pattern);
+}
+
+fn for_all_subpatterns (pattern: &mut CustomPattern, callback: &mut FnMut(
+      &mut CustomPattern)) {
+  callback (pattern);
+  for collection in pattern.children.iter_mut() {
+    for child in collection.1.iter_mut() {
+      for_all_subpatterns (child, callback);
+    }
+  }
+}
+
+fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: & MusicSpecification) {
+  modify_custom_pattern (pattern, seed, specification, &| pattern, mut generator, modify_child | {
+    let mut child_chooser = ChaChaRng::from_seed(&[generator.gen()]);
+    for collection in pattern.children.iter_mut() {
+      for child in collection.1.iter_mut() {
+        modify_child (child, &tweak_custom_pattern);
+      }
+    }
+  });
+}
+
+fn limit_custom_pattern_voices (pattern: &mut CustomPattern, seed: u32, specification: & MusicSpecification) {
+  modify_custom_pattern (pattern, seed, specification, &| pattern, mut generator, modify_child | {
+    for index in 0..pattern.children.len() {
+      let limit = specification.voice_limit (&pattern.children[index].0);
+      while pattern.children[index].1.iter().map (| child | child.max_voices).sum::<i32>() > limit {
+        reduce_custom_pattern_voices(pattern, generator.gen(), specification);
+      }
+      for child in pattern.children[index].1.iter_mut() {
+        modify_child (child, &limit_custom_pattern_voices);
+      }
+    }
+  });
+}
+
+fn reduce_custom_pattern_voices (pattern: &mut CustomPattern, seed: u32, specification: & MusicSpecification) {
+  modify_custom_pattern (pattern, seed, specification, &| pattern, mut generator, modify_child | {
+    let original = pattern.max_voices;
+    while pattern.max_voices == original {
+      if pattern.notes.len() > 0 && generator.gen() {
+        pattern.notes.pop();
+      }
+      else if let Some(collection) = pattern.children.iter_mut().max_by_key (|collection|
+          collection.1.iter().map (| child | child.max_voices).sum::<i32>()
+        ) {
+        let index = generator.gen_range (0, collection.1.len());
+        if (collection.1[index].max_voices <= 1) || (collection.1.len() > 1 && specification.may_delete_whole_patterns(&collection.0)) {
+          collection.1.remove (index);
+        }
+        else {
+          modify_child (&mut collection.1[index], &reduce_custom_pattern_voices);
+        }
+      }
+      update_custom_max_voices (pattern);
+    }
+  });
+}
+
+  
+  /*if pattern.duration > specification.max_monolithic_size {
+  
+  }*/
+  
+fn update_custom_max_voices (pattern: &mut CustomPattern) {
+  pattern.max_voices = pattern.children.iter().map (| collection | collection.1.iter().map (| child | child.max_voices).sum::<i32>()).max ().unwrap_or(0) + pattern.notes.len() as i32;
+}
+
+fn custom_reroll_note (pattern: &mut CustomPattern, generator: &mut ChaChaRng) {
+  pattern.notes = Vec::new();
+  
+  if pattern.position.duration <= 16 && generator.gen::<f64>()*2.0 < (pattern.position.duration as f64/16.0) { 
+    pattern.notes = random_pattern_timbre_or_silence (generator);
+  }
+  if pattern.position.duration > 16 && generator.gen::<f64>()*2.0 < 16.0/pattern.position.duration as f64 { 
+    pattern.notes = random_pattern_timbre_or_silence (generator);
+  }
+}
+
+fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
+  let mut next = pattern.clone();
+  for_all_subpatterns (&mut next, &mut |foo| foo.position.start += pattern.position.duration);
+  // TODO remove_repetitive_voices
+  limit_custom_pattern_voices (&mut next, generator.gen(), specification);
+  tweak_custom_pattern (&mut next, generator.gen(), specification);
+  
+  let duration = pattern.position.duration*2;
+  
+  let mut result = CustomPattern {
+    serial_number: new_serial_number(),
+    position: PatternPosition {start: pattern.position.start, duration},
+    max_voices: 0,
+    //pattern_type,
+    children: vec![(pattern.position.clone(), vec![pattern]), (next.position.clone(), vec![next])],
+    notes: Vec::new(),
+  };
+  custom_reroll_note(&mut result, generator);
+  update_custom_max_voices (&mut result);
+  result
+}
+fn generate_smallest_custom_pattern (start: i32, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
+  let mut result = CustomPattern {
+    serial_number: new_serial_number(),
+    position: PatternPosition {start, duration: 1},
+    max_voices: 0,
+    children: vec![],
+    notes: Vec::new(),
+  };
+  custom_reroll_note(&mut result, generator);
+  update_custom_max_voices (&mut result);
+  result
+}
+
+fn generate_custom_pattern (generator: &mut ChaChaRng, start: i32, min_duration: i32, specification: & MusicSpecification) -> CustomPattern {
+  let mut pattern = generate_smallest_custom_pattern (start, generator, specification);
+  while pattern.position.duration < min_duration {
+    pattern = expand_custom_pattern (pattern, generator, specification);
+  }
+  pattern
+}
+
+
+fn assemble_custom_pattern (pattern: & CustomPattern)->Vec<PatternNote> {
+  let mut result = Vec::new();
+  result.extend(pattern.notes.iter().map (| timbre | PatternNote {start: pattern.position.start, duration: pattern.position.duration, timbre: timbre.clone() }));
+  for (index, children) in pattern.children.iter().enumerate() {
+    for other_pattern in children.1.iter() {
+      result.extend (assemble_custom_pattern (other_pattern));
+    }
+  }
+  result
+}
 
 
 
