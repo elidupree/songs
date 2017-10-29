@@ -744,9 +744,16 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
       if pattern.notes.is_empty() {
         custom_reroll_note (pattern, &mut generator);
       }
-      for collection in pattern.children.iter_mut() {
-        collection.1.push (generate_custom_pattern (&mut unstable, collection.0.start, collection.0.duration, specification)); 
+      if pattern.children.len() >0 {
+        let new_child = generate_custom_pattern (&mut unstable, pattern.children [0].0.start, pattern.children [0].0.duration, specification);
+        for collection in pattern.children.iter_mut().skip(1) {
+          collection.1.push (make_next_sibling (& new_child, &mut unstable, specification));
+        }
+        pattern.children [0].1.push(new_child);
       }
+      /*for collection in pattern.children.iter_mut() {
+        collection.1.push (generate_custom_pattern (&mut unstable, collection.0.start, collection.0.duration, specification)); 
+      }*/
       update_custom_max_voices (pattern);
       println!("{:?} er", (&pattern.position, &pattern.max_voices, specification.target_voices (&pattern.position)));
     }
