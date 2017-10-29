@@ -628,7 +628,7 @@ impl MusicSpecification {
     20
   }
   fn target_voices (&self, position: &PatternPosition)->i32 {
-    if position.duration > 16*8 {0} else {min( 10, position.duration / 8)}
+    if position.duration > 16*8 || (position.duration > 16 && (position.start / position.duration) & 1 == 0) {0} else {min( 10, position.duration / 8)}
   }
   fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
     0.5
@@ -740,6 +740,7 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
     }
     while pattern.max_voices <specification.target_voices (&pattern.position) {
       println!("{:?}", (&pattern.position, &pattern.max_voices, specification.target_voices (&pattern.position)));
+      //if pattern.position.start >= 256 {panic!()}
       if pattern.notes.is_empty() {
         custom_reroll_note (pattern, &mut generator);
       }
@@ -750,7 +751,7 @@ fn tweak_custom_pattern (pattern: &mut CustomPattern, seed: u32, specification: 
       println!("{:?} er", (&pattern.position, &pattern.max_voices, specification.target_voices (&pattern.position)));
     }
     if generator.gen_range(0,118)==0i32 { 
-      custom_reroll_note (pattern, &mut generator); 
+      //custom_reroll_note (pattern, &mut generator); 
     }
     if pattern.position.duration >= 32 && generator.gen_range(0,8)==0i32 { 
       let transposition = generator.gen_range(-7,8);
