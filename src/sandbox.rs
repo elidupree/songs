@@ -830,14 +830,31 @@ fn custom_reroll_note (pattern: &mut CustomPattern, generator: &mut ChaChaRng) {
   }
 }
 
-fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
+fn make_next_sibling(pattern: &CustomPattern, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
   let mut next = pattern.clone();
+  //for_all_subpatterns (&mut next, &mut | descendent | assert!(descendent.max_voices >= specification.target_voices (& descendent.position)));
   nudge_custom_pattern (&mut next, pattern.position.duration);
+  //for_all_subpatterns (&mut next, &mut | descendent | assert!(descendent.max_voices >= specification.target_voices (& descendent.position)));
+  println!("begin {:?}", (&next.position, &next.max_voices, specification.target_voices (&next.position)));
   // TODO remove_repetitive_voices
   generator.gen::<u32>();//limit_custom_pattern_voices (&mut next, generator.gen(), specification);
   tweak_custom_pattern (&mut next, generator.gen(), specification);
   
+  //let next_2 = generate_custom_pattern (generator, next.position.start, next.position.duration, specification);
+  /*for collection in next.children.iter_mut() {
+    collection.1.push (generate_custom_pattern (generator, collection.0.start, collection.0.duration, specification)); 
+  }
+  update_custom_max_voices (&mut next);*/
+  
+  next
+}
+
+fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
+  let mut next = make_next_sibling(&pattern, generator, specification);
+  
   let duration = pattern.position.duration*2;
+  
+  //for_all_subpatterns (&mut next, &mut | descendent | assert!(descendent.max_voices >= specification.target_voices (& descendent.position)));
   
   let mut result = CustomPattern {
     serial_number: ChaChaRng::from_seed(&[pattern.serial_number as u32]).gen(),
