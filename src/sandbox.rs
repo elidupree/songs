@@ -872,11 +872,18 @@ fn make_next_sibling(pattern: &CustomPattern, generator: &mut ChaChaRng, specifi
       .1 += descendent.position.duration
   );
   let removed_serial_numbers: HashSet<_> = total_durations_by_serial_number.into_iter()
-    .filter(|&(number, (duration, total))| total == pattern.position.duration && duration*4 <= total)
+    .filter(|&(number, (duration, total))| {
+      println!("{:?}", (number, (duration, total, pattern.position.duration)));
+      total == pattern.position.duration && duration*8 <= total
+    })
     .map(|(number, _)| number)
     .collect();
   
   for_all_subpatterns_bottomup (&mut next, &mut | descendent | {
+    // hack: reroll IDs when children are deleted so we don't keep deleting supersets of the same pattern
+    if descendent.children.iter().any(|collection| collection.1.iter().any(| child | removed_serial_numbers.contains (&child.serial_number))) {
+      descendent.serial_number = ChaChaRng::from_seed(&[descendent.serial_number as u32]).gen();
+    }
     for collection in descendent.children.iter_mut() {
       collection.1.retain (| child | !removed_serial_numbers.contains (&child.serial_number));
     }
