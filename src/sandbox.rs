@@ -628,7 +628,12 @@ impl MusicSpecification {
     20
   }
   fn target_voices (&self, position: &PatternPosition)->i32 {
-    if position.duration > 16*8 || (position.duration > 16 && (position.start / position.duration) & 1 == 0) {0} else {min( 10, position.duration / 8)}
+    let virtual_duration = if position.duration > 16 && (position.start / position.duration) & 1 == 0 {
+      position.duration / 2
+    } else {
+      position.duration
+    };
+    min(10, virtual_duration / 8)
   }
   fn modify_children_the_same_way_chance (&self, position: &PatternPosition)->f64 {
     0.5
@@ -658,6 +663,7 @@ struct CustomPattern {
   serial_number: u64,
   position: PatternPosition,
   max_voices: i32,
+  repetitions: i32,
   children: Vec<(PatternPosition, Vec<CustomPattern>)>,
   notes: Vec<PatternTimbre>,
 }
@@ -716,6 +722,25 @@ fn for_all_subpatterns (pattern: &mut CustomPattern, callback: &mut FnMut(
   for collection in pattern.children.iter_mut() {
     for child in collection.1.iter_mut() {
       for_all_subpatterns (child, callback);
+    }
+  }
+}
+fn for_all_subpatterns_bottomup (pattern: &mut CustomPattern, callback: &mut FnMut(
+      &mut CustomPattern)) {
+  for collection in pattern.children.iter_mut() {
+    for child in collection.1.iter_mut() {
+      for_all_subpatterns (child, callback);
+    }
+  }
+  callback (pattern);
+}
+
+fn for_last_subpatterns (pattern: &mut CustomPattern, callback: &mut FnMut(
+      &mut CustomPattern)) {
+  callback (pattern);
+  for collection in pattern.children.last_mut().iter_mut() {
+    for child in collection.1.iter_mut() {
+      for_last_subpatterns (child, callback);
     }
   }
 }
@@ -839,8 +864,28 @@ fn custom_reroll_note (pattern: &mut CustomPattern, generator: &mut ChaChaRng) {
 
 fn make_next_sibling(pattern: &CustomPattern, generator: &mut ChaChaRng, specification: & MusicSpecification) -> CustomPattern {
   let mut next = pattern.clone();
+  
+  let mut total_durations_by_serial_number = HashMap::new();
+  for_all_subpatterns (&mut next, &mut | descendent |
+    total_durations_by_serial_number.entry (descendent.serial_number)
+      .or_insert ((descendent.position.duration, 0))
+      .1 += descendent.position.duration
+  );
+  let removed_serial_numbers: HashSet<_> = total_durations_by_serial_number.into_iter()
+    .filter(|&(number, (duration, total))| total == pattern.position.duration && duration*4 <= total)
+    .map(|(number, _)| number)
+    .collect();
+  
+  for_all_subpatterns_bottomup (&mut next, &mut | descendent | {
+    for collection in descendent.children.iter_mut() {
+      collection.1.retain (| child | !removed_serial_numbers.contains (&child.serial_number));
+    }
+    update_custom_max_voices (descendent);
+  });
+  
   //for_all_subpatterns (&mut next, &mut | descendent | assert!(descendent.max_voices >= specification.target_voices (& descendent.position)));
   nudge_custom_pattern (&mut next, pattern.position.duration);
+  for_all_subpatterns (&mut next, &mut | descendent | descendent.repetitions *= 2);
   //for_all_subpatterns (&mut next, &mut | descendent | assert!(descendent.max_voices >= specification.target_voices (& descendent.position)));
   println!("begin {:?}", (&next.position, &next.max_voices, specification.target_voices (&next.position)));
   // TODO remove_repetitive_voices
@@ -867,6 +912,7 @@ fn expand_custom_pattern (pattern: CustomPattern, generator: &mut ChaChaRng, spe
     serial_number: ChaChaRng::from_seed(&[pattern.serial_number as u32]).gen(),
     position: PatternPosition {start: pattern.position.start, duration},
     max_voices: 0,
+    repetitions: 1,
     //pattern_type,
     children: vec![(pattern.position.clone(), vec![pattern]), (next.position.clone(), vec![next])],
     notes: Vec::new(),
@@ -880,6 +926,7 @@ fn generate_smallest_custom_pattern (start: i32, generator: &mut ChaChaRng, spec
     serial_number: new_serial_number(),
     position: PatternPosition {start, duration: 1},
     max_voices: 0,
+    repetitions: 1,
     children: vec![],
     notes: Vec::new(),
   };
